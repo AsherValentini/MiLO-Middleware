@@ -1,4 +1,4 @@
-# 1. High-Level Design (HLD) – MiLO Middleware on Linux MPU
+# 1. High-Level Design (HLD) - MiLO Middleware on Linux MPU - v/1.0
 
 ## System Role
 
@@ -48,6 +48,7 @@ The Linux MPU serves as the central brain of a medical device, orchestrating thr
 
 ## 3. State Machine (SystemCoordinator)
 
+``` 
 [BOOT]
   ↓
 [INIT]
@@ -78,6 +79,7 @@ The Linux MPU serves as the central brain of a medical device, orchestrating thr
  Fallback Paths:
     On serial failure or invalid config → [ERROR] state
     On emergency button press → [ABORT] → [IDLE]
+```
 
 # 4. External and Internal Interfaces 
 
