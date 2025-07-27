@@ -116,12 +116,14 @@ The Linux MPU serves as the central brain of a medical device, orchestrating thr
 
 # 6. Filesystem Layout (on SD card)
 
+```
 /mnt/sdcard/
 ├── config.json
 └── logs/
     ├── 2025-07-17T09-30-01_run001.csv
     ├── 2025-07-17T11-14-29_run002.csv
     └── manifest.json (optional index of all runs)
+```
 
 # 7. Log Rotation Policy
 
