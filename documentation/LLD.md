@@ -198,6 +198,42 @@ public:
     void notifyFailure(const std::string& msg);
 };
 ```
+## Threading Model
+### System Goals Recap and Context for Threading Choices
+Given: 
+- Sub-10ms latency target 
+- Multi-stage processing (UI->protocol->serial->log)
+- Modular HFT-esc design 
+- Focus on clean memory and ownership boundaries 
+
+...the threading model needs to prioritize: 
+| Concern           | Implication                                        |
+| ------------------| -------------------------------------------------- |
+| Low Latency       | Avoid locks and avoid blocking                     |
+| Isolation         | Ensure one module doesn’t block others             |
+| Streaming         | Pipe data across stages in predictable time        |
+| Testability       | Keep logic in isolated units for mocking           |
+| Developer clarity | Easy to reason about: who owns what and runs where |
+
+So the threading model leans on dedicated threads + lock-free memory hand offs for inter thread/stage comms. 
+### Proposed Threading Model 
+```
+[ UI Thread ]          ---> updates --->   [ ParameterStore ]   ---> read by ---> [ Protocol Thread ]
+
+[ Serial I/O Thread ]  <--- blocks/reads --->  [ USB MCUs ]
+
+[ Logger Thread ]      <--- enqueues from ---> [ Protocol Thread ]
+```
+### UI Thread
+- Reads GPIO rotary encoder 
+- Pushes updates to the `ParameterStore`
+- Updates OLED display based on state
+
+> **Why a seperate thread?** Because GPIO polling and OLED updates are **slow** (~i2c wrote latency + debounce timing). 
+> You do not want that anywhere near the protocol FSM logic. This keeps input an rendering **off the hot path**. 
+
+
+
 
 
 
