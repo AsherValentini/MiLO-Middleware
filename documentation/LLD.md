@@ -48,7 +48,7 @@ I’ll break the LLD down into the following sections:
 - /src/io/
 - /include/, etc.
 
-## Module-to-Class Mapping 
+## 1. Module-to-Class Mapping 
 ### What we’ve done in Module-to-Class Mapping is:
 - Sketch a first-pass API for each module based on its HLD role
 - Define their core responsibilities and collaborators
@@ -62,7 +62,22 @@ DO NOT use these headers as definitive. They will be refined throughout developm
 Use the following mappings as a peak into the general direction I want to take each of these classes, a white board brainstorm if you will. 
 The code base will be self documenting. Therefore, if you want to review production implementation for any module, review the 
 header files in the Include directory, not the rough sketches throughout this document. 
-### 1. SystemCoordinator
+
+Here is the module overview recap from the HLD: 
+| Module                              | Description                                                                  |
+| ----------------------------------- | ---------------------------------------------------------------------------- |
+| **SystemCoordinator**               | Manages overall system lifecycle: boot, protocol execution, shutdown.        |
+| **ConfigLoader**                    | Loads and parses JSON protocol file from `/mnt/sdcard/config.json`.          |
+| **ProtocolFactory**                 | Dynamically instantiates the appropriate protocol class from config.         |
+| **ExperimentProtocol (base class)** | Defines interface for all protocols: `run(RPCManager&, Logger&)`.            |
+| **RPCManager**                      | Manages serial communication with all MCUs; non-blocking and low-latency.    |
+| **Logger**                          | Asynchronously logs events to CSV; handles log rotation based on disk quota. |
+| **ErrorMonitor**                    | Tracks timeouts, communication faults, and fallback/retry logic.             |
+| **UIController**                    | Manages rotary encoder + OLED display for user input of parameters.          |
+| **ParameterStore**                  | Holds live user-defined parameters shared with Protocol execution logic.     |
+
+
+### SystemCoordinator
 Role: Orchestrates lifecycle, state transitions, component startup/shutdown 
 
 ```
@@ -88,7 +103,7 @@ private:
     std::shared_ptr<ErrorMonitor> errorMonitor_;
 };
 ```
-### 2. ConfigLoader 
+### ConfigLoader 
 Role: Parse system configs allowing runtime decision making. Used by the `SystemCoordinator` during the `INIT` state.
 ```
 class ConfigLoader {
@@ -100,7 +115,7 @@ private:
     std::string path_;
 };
 ```
-### 3. ProtocolFactory 
+### ProtocolFactory 
 Role: Consumes parsed configs and returns appropriate protocol instances. Injects `ParameterStore` so protocol can read user-defined values. 
 ```
 class ProtocolFactory {
@@ -114,7 +129,7 @@ private:
     std::unordered_map<std::string, Creator> creators_;
 };
 ```
-### 4. ExperimentProtocl (abstract base + concrete subclass)
+### ExperimentProtocl (abstract base + concrete subclass)
 Role: Pulls live values from `ParameterStore` and executes FSM-style step logic inside `run()` method. 
 ```
 class ExperimentProtocol {
@@ -131,7 +146,7 @@ private:
     void step2();
 };
 ```
-### 5. RPCManager 
+### RPCManager 
 Role: Abstracts raw serial I/O. May use `poll()` or `select()` in a background thread. 
 Devices will be scoped enumerations: PSU, PG, and Pump, with compile time safety rails. eg. Lock the number of enum values. 
 ```
@@ -145,7 +160,7 @@ private:
     std::unordered_map<Device, SerialChannel> channels_;
 };
 ```
-### 6. Logger 
+### Logger 
 Role: Async logger with internal thread. Writes to SD, and ratates storage based on quota. LogEven = timestamp, type, key/value
 ```
 class Logger {
@@ -160,7 +175,7 @@ private:
     std::atomic<bool> running_;
 };
 ```
-### 7. UIController 
+### UIController 
 Role: Emits events to the `SystemCoordinator` or the `ParameterStore`. Talks to the OLED via i2c-dev. 
 ```
 class UIController {
@@ -176,7 +191,7 @@ private:
     void updateOLED();          // Write to I2C
 };
 ```
-### 8. ParameterStore
+### ParameterStore
 Role: Thread safety parameter store with strong types. Shared resource between UIController (wrt) and ExperimentProtocol (rd). 
 ```
 class ParameterStore {
@@ -189,7 +204,7 @@ private:
     std::unordered_map<Parameter, float> values_;
 };
 ```
-### 9. ErrorMonitor
+### ErrorMonitor
 Role: Monitors RPC timeouts, diconnections and escalates to `SystemCoordinator` when needed. 
 ```
 class ErrorMonitor {
@@ -198,7 +213,7 @@ public:
     void notifyFailure(const std::string& msg);
 };
 ```
-## Threading Model
+## 2. Threading Model
 ### System Goals Recap and Context for Threading Choices
 Given: 
 - Sub-10ms latency target 
