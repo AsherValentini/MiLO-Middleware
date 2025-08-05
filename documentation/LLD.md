@@ -229,9 +229,65 @@ So the threading model leans on dedicated threads + lock-free memory hand offs f
 - Pushes updates to the `ParameterStore`
 - Updates OLED display based on state
 
-> **Why a seperate thread?** Because GPIO polling and OLED updates are **slow** (~i2c wrote latency + debounce timing). 
-> You do not want that anywhere near the protocol FSM logic. This keeps input an rendering **off the hot path**. 
+> **Why a seperate thread?** 
+> Because GPIO polling and OLED updates are **slow** (~i2c wrote latency + debounce timing). 
+> We do not want that garbage anywhere near the protocol FSM logic. This keeps input an rendering **off the hot path**. 
 
+### Protocol Execution Thread
+- Core FSM loop: executes steps, and computes commands 
+- Reads parameters as needed 
+- Dispatches to RPCManager
+- Pushes log events to logger queue
+
+> **Why a seperate thread?** 
+> Protocols will have internal timing logic that may block. 
+> They will be the "brains" of the system and should there not be blocked. 
+> So they will block and they should not be blocked by: 
+
+- SD card access (logging) 
+- i2C/GPIO ISR (UI updates)
+- Serial I/O (Remote Procedure Calls to distributed devices) 
+
+This thread runs the active control state machine, must feal "real-time from a logic perspective. 
+
+### Serial I/O Thread 
+- Uses `poll()` or `select()` to wait on several `/dev/ttyUSBx`
+- Reads/writes data using `RPCManager`
+- Buffers input lines and matches protocol requests 
+
+> **Why a seperate thread** 
+> Because `read()` on a serial port is a blocking syscall, and IO latency is unpredictable. 
+> By isolating it, the main protocol thread can continue working independently, and just await a res. 
+
+### Logger Thread
+- Consumes LogEvent structs from a lock-free ring buffer (yes thats overkill but I like the pattern) 
+- Flushes periodically to CSV 
+- Rotates logs if disk space exceeded
+
+> **Why a seperate thread**
+> Logging simply cannot delay control flow..dah. 
+> Okay but for real for real, writing to disk is non-deterministic (SD card wear leveling and OS syncs blah blah) 
+> Miss me with that, we gonna log events into a buffer and handle flushing in the background. 
+> smooth.  
+
+### Why I Like This Threading Model 
+
+| Benefit              | How                                               |
+| -------------------- | ------------------------------------------------- |
+| Pipeline-ready       | Each thread handles one stage, decoupled          |
+| Fail-safe            | A stuck logger doesn’t break the protocol         |
+| Predictable latency  | The protocol thread is free from I/O jitter       |
+| Testable             | Each module can be tested in isolation with mocks |
+| Easy to reason about | Responsibilities are clearly isolated             |
+
+### Okay, Quick Summary
+
+| Thread            | Purpose                     | Blocking Ops?  | Communication                                                  |
+| ----------------- | --------------------------- | -------------- | -------------------------------------------------------------- |
+| `UI Thread`       | Reads GPIO, updates display | Yes (I2C)      | Writes to `ParameterStore`                                     |
+| `Protocol Thread` | Runs FSM, manages commands  | No             | Reads from `ParameterStore`, sends to Serial, pushes to logger |
+| `Serial Thread`   | Reads/writes `/dev/ttyUSBx` | Yes            | Notifies protocol FSM via future/promise or callback           |
+| `Logger Thread`   | Flushes log entries to disk | Yes (disk I/O) | Pulls from lock-free buffer                                    |
 
 
 
