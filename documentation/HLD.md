@@ -40,7 +40,6 @@ The Linux MPU serves as the central brain of a medical device, orchestrating thr
 | **ProtocolFactory**                 | Dynamically instantiates the appropriate protocol class from config.         |
 | **ExperimentProtocol (base class)** | Defines interface for all protocols: `run(RPCManager&, Logger&)`.            |
 | **RPCManager**                      | Manages serial communication with all MCUs; non-blocking and low-latency.    |
-| **LEDController**                   | Controls GPIO-based RGB LEDs for UI feedback based on system state.          |
 | **Logger**                          | Asynchronously logs events to CSV; handles log rotation based on disk quota. |
 | **ErrorMonitor**                    | Tracks timeouts, communication faults, and fallback/retry logic.             |
 | **UIController**                    | Manages rotary encoder + OLED display for user input of parameters.          |
