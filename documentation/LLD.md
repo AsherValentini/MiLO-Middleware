@@ -246,7 +246,7 @@ So the threading model leans on dedicated threads + lock-free memory hand offs f
 
 > **Why a seperate thread?** 
 > Because GPIO polling and OLED updates are **slow** (~i2c wrote latency + debounce timing). 
-> We do not want that garbage anywhere near the protocol FSM logic. This keeps input an rendering **off the hot path**. 
+> We do not want that garbage anywhere near the protocol FSM logic. This keeps input and rendering **off the hot path**. 
 
 ### Protocol Execution Thread
 - Core FSM loop: executes steps, and computes commands 
@@ -256,7 +256,7 @@ So the threading model leans on dedicated threads + lock-free memory hand offs f
 
 > **Why a seperate thread?** 
 > Protocols will have internal timing logic that may block. 
-> They will be the "brains" of the system and should there not be blocked. 
+> They will be the "brains" of the system and should not **be blocked** either. 
 > So they will block and they should not be blocked by: 
 
 - SD card access (logging) 
@@ -305,9 +305,141 @@ This thread runs the active control state machine, must feal "real-time from a l
 | `Logger Thread`   | Flushes log entries to disk | Yes (disk I/O) | Pulls from lock-free buffer                                    |
 
 
+## 3. Data Ownership + Lifetimes
+
+Memory leaks...pshshsh 
+This section answers the question: 
+> Who owns what? 
+> Who creates what?
+> Who cleans up what? 
+> How long do these things live for...?
+
+### Why This Matters
+The system is going to be multithreaded, so ownership clarity ensures: 
+- No dangling pointers
+- No data races
+- No accidental double-free -r lifetime extension bugs
+- Deterministic shutdown logic 
+- Minimal surprises when reading or modifying code
+
+### Guiding Principles 
+| Topic                                           | Rule                                                          |
+| ----------------------------------------------- | ------------------------------------------------------------- |
+| Long-lived systems (e.g., coordinator, loggers) | Use `std::shared_ptr` or lifetime-managed singletons          |
+| Single-owner resources (e.g., config, protocol) | Use `std::unique_ptr`                                         |
+| Shared memory buffers (e.g., ParameterStore)    | Shared via `std::shared_ptr` with internal mutex (or atomics) |
+| Thread modules (UI, Logger)                     | Own their own thread + clean shutdown (RAII)                         |
+| Event/data queues                               | Owned by producer, referenced by consumer                     |
 
 
+### Ownership Map (Per Module)
+I am once again asking you to review the architectures modules: 
+| Module                              | Description                                                                  |
+| ----------------------------------- | ---------------------------------------------------------------------------- |
+| **SystemCoordinator**               | Manages overall system lifecycle: boot, protocol execution, shutdown.        |
+| **ConfigLoader**                    | Loads and parses JSON protocol file from `/mnt/sdcard/config.json`.          |
+| **ProtocolFactory**                 | Dynamically instantiates the appropriate protocol class from config.         |
+| **ExperimentProtocol (base class)** | Defines interface for all protocols: `run(RPCManager&, Logger&)`.            |
+| **RPCManager**                      | Manages serial communication with all MCUs; non-blocking and low-latency.    |
+| **Logger**                          | Asynchronously logs events to CSV; handles log rotation based on disk quota. |
+| **ErrorMonitor**                    | Tracks timeouts, communication faults, and fallback/retry logic.             |
+| **UIController**                    | Manages rotary encoder + OLED display for user input of parameters.          |
+| **ParameterStore**                  | Holds live user-defined parameters shared with Protocol execution logic.     |
 
 
+#### `SystemCoordinator`
+- Owns 
+    - Logger
+    - UIController 
+    - RPCManager
+    - ErrorMonitor
+    - ParameterStore
+    - The **current protocol** (via unique_ptr returned from the protocol registery from the protocol factory) 
+- Lifetime: app boot -> shutdown 
+- Shutdown: Calls `stop()` on each owned thread-safe module 
 
+Recalling my earlier API draft in section one, ownership for this module might look something like: 
+```
+std::shared_ptr<Logger> logger_;
+std::shared_ptr<UIController> ui_;
+std::shared_ptr<RPCManager> rpc_;
+std::shared_ptr<ErrorMonitor> errorMonitor_;
+std::shared_ptr<ParameterStore> paramStore_;
+std::unique_ptr<ExperimentProtocol> protocol_;
+```
+
+#### `ConfigLoader`
+- Short lived 
+- Allocated on stack during SystemCoordinator::initialize()
+- Return JSOn data byvaly (copy/move) 
+
+#### `ProtocolFactory` 
+- Stateless singleton 
+- Returns `std::unique_ptr<ExperimentProtocol>`
+
+> **Why unique_ptr** 
+> I expect that each protocol is used exactly once for a run. Clean ownership, no sharing. 
+
+#### `ExperimentProtocol`
+- Owned by: `SystemCoordinator`
+- Holds reference to: `ParameterStore` (as a `std::shared_ptr`) 
+- Lifetime: per experiment run. 
+
+> We do not share protocl logic between runs - I rate its better to discard and rebuild fresh per config. 
+
+#### `RPCManager` 
+- Shared between: 
+    - `SystemCoordinator` (duirng init)
+    - `ExperimentProtocol` (for use during run) 
+- Owns: all active USB serial connections 
+- Lifetime: `SystemCoordinator::initialize() -> app shutdown 
+
+#### `Logger`
+- Owned by `SystemCoordinator`
+- Runs its own internal thread
+- Consumes `LogEvents` from a ring buffer 
+- Shuts down cleanly at system exit via Logger::finishRun()
+
+#### `UIController`
+- Owned by `SystemCoordinator`
+- Owns: 
+    - Rotary encoder GPIO lines 
+    - OLED i2c handle 
+    - Its own thread 
+- Writes to: `ParameterStore` (via std::shared_ptr) 
+
+#### `ParameterStore`
+- Shared across a few modules: 
+    - `UIController` (wrt) 
+    - `ExperimentProtocol` (rd) 
+    - `Logger` (rad, for logging parameters set 
+- Critical sections and internal data guarded by mutex/RAII guards 
+
+#### `ErrorMonitor` 
+- Shared across: 
+    - `RPCManager` (report failures) 
+    - `SystemCoordinator` (escalations) 
+> **Pattern options:** thinking about signal or observer patern depending on how the callbacks are designed...
+
+### Inter-Thread Buffers 
+So these are heavily subject to change based on how I am feeling when I get into the meet and bones of this. 
+One thing is for certain, they will be typical queue like memory structures/patterns. Double buffer, ring buffer, thread safe blocking queue built
+over std::queue<T>. All good options. Here is my initial draft: 
+
+| Buffer                                 | Owner           | Reader          |
+| -------------------------------------- | --------------- | --------------- |
+| `RingBuffer<LogEvent>`                 | Protocol Thread | Logger Thread   |
+| `RingBuffer<SerialMessage>` (optional) | Serial Thread   | Protocol Thread |
+| `ParameterStore` (mutexed map)         | Shared          | Shared          |
+
+
+### Takeaways
+| Decision                                      | Motivation                                          |
+| --------------------------------------------- | --------------------------------------------------- |
+| `unique_ptr<ExperimentProtocol>`              | Clean separation per run, exclusive ownership       |
+| `shared_ptr<Logger/UIController/ParamStore>`  | Shared by multiple threads with clear shutdown path |
+| Internal mutex in `ParameterStore`            | Simplicity over lock-free complexity                |
+| `std::thread` member in thread-owning modules | Ensures joinable shutdown                           |
+| Value-returning `ConfigLoader`                | No leaks, easy testing                              |
+| Clear start/stop API on threaded modules      | Professional-grade lifecycle handling               |
 
