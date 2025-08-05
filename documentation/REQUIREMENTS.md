@@ -9,14 +9,24 @@ The system is a central controller for a medical device, running on an STM32MP15
 ## Functional Requirements
 
 ### Input Handling
-- Detect physical button presses via GPIO (Start, Stop, Emergency)
+- Detect physical button presses via GPIO and rotary encoder button
 - Debounce button input in software (≥20ms stabilization window)
-- Control RGB LED color on buttons based on current system state
+- Decode rotary encoder input to cycle and select parameters
+
+### UI Parameter Configuration
+- Allow user to adjust experiment parameters at runtime using a rotary encoder with tactile switch.
+- Display current editable parameter (e.g., voltage, frequency, flow rate, syringe diameter) on a small I2C OLED display.
+- Save selected parameters in memory for duration of the session.
+- Apply user-defined values when constructing high-level commands sent to MCUs.
+
 
 ### Protocol Control
 - Load experiment protocol config from SD card (`.json` format)
 - Instantiate and execute experiment protocol as a runtime-generated object
-- Dispatch high-level commands to each connected MCU (e.g., `StartPump`, `EnablePSU`)
+- Dispatch high-level commands to each connected MCU, populated with user-adjusted parameters (e.g., `StartPump`, `EnablePSU`):
+    - Voltage settings to MCU 1 (PSU)
+    - Frequency settings to MCU 2 (Pulse Generator)
+    - Flow rate and syringe diameter to MCU 3 (Pump)
 - Wait for and validate responses from MCUs
 
 ### Experiment Execution
@@ -41,7 +51,7 @@ The system is a central controller for a medical device, running on an STM32MP15
 
 ### Performance
 - Total system latency from button press → command → MCU response → log ≤10ms
-  - Target: 3–5ms typical response time under nominal conditions
+- Target: 3–5ms typical response time under nominal conditions
 - Internal handoff between threads via lock-free structures (e.g., SPSC ring buffer)
 
 ### Software Architecture
@@ -50,6 +60,8 @@ The system is a central controller for a medical device, running on an STM32MP15
 - Protocol execution logic must be testable in isolation from hardware
 - Use factory pattern for runtime protocol generation
 - Use state machine to manage experiment lifecycle
+- UI components must run in an isolated thread or coroutine to prevent blocking protocol execution.
+- Parameter selections must be updated in shared memory (with appropriate synchronization).
 
 ### Concurrency Model
 - At least 3 primary threads: Protocol executor, Logger, Serial I/O
@@ -64,6 +76,8 @@ The system is a central controller for a medical device, running on an STM32MP15
 - SD card interface: MicroSD (mounted at `/mnt/sdcard`), supports FAT32/ext4
 - GPIOs available via 40-pin header; usable for button + LED control
 - USB Host mode supported via USB-A port — up to 3 FTDI serial devices
+- I2C OLED display interface supported via Linux I2C bus (connected via STM32MP1 header).
+- Rotary encoder connected to GPIO pins with software debounce and edge detection.
 
 ### Reliability
 - Safe fallback if SD card is missing or full

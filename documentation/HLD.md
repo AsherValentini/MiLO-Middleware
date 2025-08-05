@@ -40,10 +40,11 @@ The Linux MPU serves as the central brain of a medical device, orchestrating thr
 | **ProtocolFactory**                 | Dynamically instantiates the appropriate protocol class from config.         |
 | **ExperimentProtocol (base class)** | Defines interface for all protocols: `run(RPCManager&, Logger&)`.            |
 | **RPCManager**                      | Manages serial communication with all MCUs; non-blocking and low-latency.    |
-| **ButtonController**                | Monitors GPIO edges for button presses; applies software debounce.           |
 | **LEDController**                   | Controls GPIO-based RGB LEDs for UI feedback based on system state.          |
 | **Logger**                          | Asynchronously logs events to CSV; handles log rotation based on disk quota. |
 | **ErrorMonitor**                    | Tracks timeouts, communication faults, and fallback/retry logic.             |
+| **UIController**                    | Manages rotary encoder + OLED display for user input of parameters.          |
+| **ParameterStore**                  | Holds live user-defined parameters shared with Protocol execution logic.     |
 
 
 ## 3. State Machine (SystemCoordinator)
@@ -53,28 +54,27 @@ The Linux MPU serves as the central brain of a medical device, orchestrating thr
   ↓
 [INIT]
   - Mount SD card
-  - Load config
+  - Load config and initialize ParameterStore with defaults
   - Open USB serial connections
   - Handshake with MCUs
   ↓
 [IDLE]
+  - Allow user to edit parameters via UI while idle
   - Wait for "Start" button press
-  - Set LED to blue
+  - Update UI screen to [RUNNING]
   ↓
 [RUNNING]
   - Execute protocol (via state transitions)
-  - Send high-level commands to MCUs
+  - Send high-level commands to MCUs using values from ParameterStore
   - Receive responses
   - Log events
-  - Set LED to red 
   ↓
 [FINISHED]
   - Log summary
-  - Flash LED to green
+  - Udate UI screen to [IDLE] 
   ↓
 [IDLE]
   - Await next experiment
-  - Set LED to blue
  
  Fallback Paths:
     On serial failure or invalid config → [ERROR] state
@@ -85,22 +85,23 @@ The Linux MPU serves as the central brain of a medical device, orchestrating thr
 
 ## External (to hardware) 
 
-| Component  | API                                                                           |
-| ---------- | ----------------------------------------------------------------------------- |
-| SD Card    | Standard Linux mount (`/mnt/sdcard`)                                          |
-| Buttons    | `libgpiod` edge detection                                                     |
-| LEDs       | GPIO writes or PWM driver                                                     |
-| USB Serial | `/dev/ttyUSBx`, managed via VID/PID udev-mapped symlinks (`/dev/pump1`, etc.) |
+| Component         | API                                                                           |
+|------------------|--------------------------------------------------------------------------------|
+| SD Card          | Standard Linux mount (`/mnt/sdcard`)                                           |
+| USB Serial       | `/dev/ttyUSBx`, managed via VID/PID udev-mapped symlinks (`/dev/pump1`, etc.)  |
+| OLED Display     | `/dev/i2c-1` using I2C user-space API (e.g., `ioctl` + write)                  |
+| Rotary Encoder   | GPIO lines using `libgpiod` edge detection and polling                         |
 
 ## Internal (between modules) 
 
-| From → To                            | Communication                           |
-| ------------------------------------ | --------------------------------------- |
-| ButtonController → SystemCoordinator | Debounced press events                  |
-| SystemCoordinator → ProtocolFactory  | Config-driven instantiation             |
-| Protocol → RPCManager                | Async command dispatch + response await |
-| Protocol → Logger                    | Step-by-step event logging              |
-| ErrorMonitor → Logger + StateMachine | Error escalations and logging           |
+| From → To                            | Communication                              |
+| ------------------------------------ | -------------------------------------------|
+| UIController → ParameterStore      | Thread-safe write of user-selected parameters|
+| Protocol → ParameterStore          | Thread-safe read of selected parameters      |               
+| SystemCoordinator → ProtocolFactory  | Config-driven instantiation                |
+| Protocol → RPCManager                | Async command dispatch + response await    |
+| Protocol → Logger                    | Step-by-step event logging                 |
+| ErrorMonitor → Logger + StateMachine | Error escalations and logging              |
 
 
 # 5. Performance and Real-Time Considerations
