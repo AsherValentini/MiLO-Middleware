@@ -443,3 +443,219 @@ over std::queue<T>. All good options. Here is my initial draft:
 | Value-returning `ConfigLoader`                | No leaks, easy testing                              |
 | Clear start/stop API on threaded modules      | Professional-grade lifecycle handling               |
 
+
+## 4. Design Patterns
+
+This section is lay down what patterns I plan to use while also addressing __why__ we are using each one, __what__ problem the pattern solves, and __how__ it fits into 
+our system"s structure and goals. 
+
+Hopefully, this section reveals: 
+- The need that arises
+- The pattern that solves it
+- Its benefits
+- Where it will appear in the project
+
+Okay, enough chatter lets walk through them one by one. 
+
+### Factory Pattern 
+#### Problem: 
+We need to instantiate different protocol classes at runtime based on: 
+- JSON config file
+- Possibly: user selection from the UI
+
+#### Soln: Factory Pattern 
+>Define an interface for creating an object, ut let subclasses (or config) decide whcih class to instantiate. 
+
+#### Impl (something like this) 
+```
+class ProtocolFactory {
+public:
+    using Creator = std::function<std::unique_ptr<ExperimentProtocol>()>;
+    void registerProtocol(std::string name, Creator creator);
+    std::unique_ptr<ExperimentProtocol> create(const std::string& name);
+};
+```
+Why runtime decision making? Why this pattern for this system. 
+- Decouples config parsing from concrete class construction 
+- Easy to extend: add new protocol class and register it 
+- Allows for plugin-style architecture later 
+- Safe than `if (type == "lysis") return new LysisProtocol(); 
+
+But honestly, if I am smart with how this factory works and how concrete classes generate experiment protocols, 
+changes to experiment protocols will have minimal impact on object code. Maybe we can bypass generating new binaries all together. 
+
+### State Machine (FSM) 
+#### Problem: 
+Experiment logic will be composed of steps that execute in sequence, probaly with: 
+- Time delays 
+- Waits for MCU responses
+- Conditional branches (retries and aborts)
+
+#### Soln: Finite State Machine Pattern 
+> Model the experiment protocol as a sequence of states, each with transition conditions and exit criterion. 
+
+#### Impl: 
+```
+enum class State : uint8_t { INIT, PREPARE, TRIGGER, WAIT, DONE, COUNT };
+
+static_assert(State::COUNT == 5, "State enum count changed-update code that depends on it); 
+
+void run(...) {
+    switch (state_) {
+        case INIT: prepare(); state_ = PREPARE; break;
+        ...
+    }
+}
+```
+Just to get the SW MVP out this pattern will hold. But future releases should evolve to an event driven FSM or maybe even 
+the fabled generator-style protocols with coroutines. Fancy fancy. 
+
+#### Why this fits: 
+- Experiment logic is naturally stateful and sequential
+- Easy to debug, test, simulate, log, its just good okay 
+- Works well with timers, retries, and error transitions. (Think error fallback STATE) 
+
+### Observer Pattern (Lightweight Usage) 
+#### Problem: 
+We want to notify the `SystemCoordinator` or error logger when something fails. 
+#### Soln: Observer Pattern 
+>Set the `ErrorMonitor` as a subject and allow it to publish events without really caring who will handle them. 
+
+So why not the signal-slot pattern? Because this is not a Qt based project.
+Go lecture someone else about how easy event driven architecture is with Qt.  
+We are gonna go Subject -> Subject Interface -> Observer Interface -> Observer. 
+The way GoF intended pub-sub to work.
+Don't like it, take it up with Design Patterns: Elements of Reusable Code. 
+
+#### Impl (read it and weap) 
+`IObserver` interface 
+```
+class IObserver {
+public:
+    virtual void onNotify(const std::string& message) = 0;
+    virtual ~IObserver() = default;
+};
+```
+`ISubject` interface 
+```
+class ISubject {
+public:
+    virtual void registerObserver(IObserver* obs) = 0;
+    virtual void removeObserver(IObserver* obs) = 0;
+    virtual void notifyAll(const std::string& msg) = 0;
+    virtual ~ISubject() = default;
+};
+```
+Then we got our concrete subject (just the core module `ErrorMonitor`) 
+```
+class ErrorMonitor : public ISubject {
+public:
+    void registerObserver(IObserver* obs) override {
+        observers_.insert(obs);
+    }
+
+    void removeObserver(IObserver* obs) override {
+        observers_.erase(obs);
+    }
+
+    void notifyAll(const std::string& msg) override {
+        for (auto* obs : observers_) {
+            obs->onNotify(msg);
+        }
+    }
+
+private:
+    std::unordered_set<IObserver*> observers_;
+};
+```
+Then the concrete observer (again just the core module `SystemCoordinator`) 
+```
+class SystemCoordinator : public IObserver {
+public:
+    void onNotify(const std::string& message) override {
+        handleError(message);
+    }
+
+    void handleError(const std::string& msg) {
+        // transition to ERROR state
+    }
+};
+```
+
+Buuut the above is just a quick scaffold of the basic observer pattern. In truth the `ErrorMonitor` subject will live in 
+a different thread to the `SystemCoordinator`. This means we need to queue notifications for the right thread. 
+So instead of directly calling `observer->onNotify(...) we will do something like: `observer->postToMainThread(msg)`
+where `postToMainThread()` pushes the message onto a `RingBuffer<ErrorEvent>` owned by the protocol thread. 
+> This introduces a message queue from `ErrorMonitor -> SystemCoordinator`, keeping the latter on its own thread. 
+
+Clean. Safe. Real-Time.
+
+### SPSC Queue / Ring Buffer 
+#### Problem: 
+We need to pass log events from the Protocol thread to the Logger thread without locking or blocking. 
+Honestly, there will be more cross stage inter thread memory hand offs and we gonna go with Ring Buffers. 
+
+#### Soln: Single-Producer, Single-Consumer (SPSC) Ring Buffer 
+> A fixed sized lock-fre buffer where one thread produces and another consumes. 
+
+> Open Q: overwrite policy...not clear. 
+
+#### Example Application between `Protocol` and `Logger`: 
+```
+RingBuffer<LogEvent> buffer_; 
+```
+Log producer (protocol) does: 
+```
+buffer_.push(LogEvent{...});
+```
+Log consumer (logger thread) does something like: 
+```
+while (running_) {
+    LogEvent e;
+    if (buffer_.pop(e)) writeToDisk(e);
+}
+```
+
+
+#### Why this fits: 
+- No contention
+- Fixed memory = real-time safety
+- Pattern used in HFT engines and embedded logging subsystems
+
+### Strategy Pattern 
+#### Problem:
+Different protocols have different control logic, but share a common structure (start, run steps, log, etc.)
+#### Soln: Strategy Pattern
+>Define a family of algorithms (protocols), encapsulate each one, and make them interchangeable.
+#### Already kinda implicitly implied via:
+class ExperimentProtocol {
+    virtual void run(...) = 0;
+};
+The entire protocol system is a Strategy, chosen at runtime via Factory.
+#### Why it fits:
+
+- Enables treating all protocols uniformly in SystemCoordinator
+- Encourages clean encapsulation of each protocol's logic
+
+### RAII (Resource Management)
+
+Use RAII (in destructors) to clean up (terrible acronym-great practice):
+-   SerialChannel connections
+-   Threads (std::thread::join())
+-   i2c file handles
+-   Log file handles
+
+Perhaps I will introduce scoped guards (e.g., RunGuard for safe FSM exit logging). Lets see, how much I can do before the deadline. 
+
+### Summary 
+| Pattern       | Used In                   | Motivation                                    |
+| ------------- | ------------------------- | --------------------------------------------- |
+| Factory       | `ProtocolFactory`         | Runtime flexibility, decoupled construction   |
+| State Machine | `ExperimentProtocol`      | Deterministic step-based control              |
+| Observer      | `ErrorMonitor`            | Loose coupling for error propagation          |
+| SPSC Queue    | `Logger`, `Protocol`      | Lock-free async event streaming               |
+| Strategy      | `ExperimentProtocol`      | Swappable protocols under a uniform interface |
+| RAII          | Threads, Files, I2C, etc. | Resource safety, no leaks                     |
+
+
+
