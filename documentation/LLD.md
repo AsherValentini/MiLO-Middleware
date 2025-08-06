@@ -1,7 +1,7 @@
 # Low Level Design 
 
 ## Purpose 
-Low Level Desing can get murky. Here is what this document does.
+Low Level Design can get murky. Here is what this document does.
 
 -   Maps HLD modules to concrete C++ classes and responsibilities
 -   Defines data structures, threading model, memory ownership
@@ -664,7 +664,7 @@ Perhaps I will introduce scoped guards (e.g., RunGuard for safe FSM exit logging
 
 ## 5. Error Handling & Watchdogs
 
-So thi section addresses how I plan to : 
+So this section addresses how I plan to: 
 - Detect failures in real time 
 - Recover 
 - Escalate to the right module (e.g., `SystemCoordinator`)
@@ -678,4 +678,319 @@ So thi section addresses how I plan to :
 | SD/storage issues   | SD card missing, write failure, config parse error | `Logger`, `ConfigLoader` |
 | UI failures         | Encoder stops responding, OLED I2C failure         | `UIController`           |
 | Protocol runtime    | Unexpected response, user abort, invalid state     | `ExperimentProtocol`     |
+
+### Guiding Philosophy 
+- System must never silently fail 
+- All errors should be: 
+    - Logged 
+    - Escalated to the `SystemCoordinator`
+    - Possibly displayed on the OLED (e.g., sd card corrupt/missing)
+- The device should always return to a safe fallbackstate: `IDLE`
+
+### Error Detection Mechanisms
+#### Thread Watchdogs (Lighweight)
+For: Logger thread, UI thread, Serial thread im thinking something like: 
+```
+class ThreadHeartbeat {
+public:
+    void tick();
+    bool isAlive(std::chrono::milliseconds timeout) const;
+};
+```
+- Each thread calls `tick()` periodically 
+- `SystemCoordinator` checks `.isAlive()` every second 
+- if not alive -> log error, abort experiment, reset state
+
+#### Serial Communication Errors 
+For: Disconneted FTDI, malformed responses, timeout hits
+Handled inside the `RPCManager`
+```
+Response awaitResponse(..., Timeout t) {
+    if (!port_.isConnected()) errorMonitor_.notify(...);
+    if (crcFail || parseError) errorMonitor_.notify(...);
+}
+```
+These get pushed into a ring buffer (maybe an observer call) for the `SystemCoordinator`. 
+
+#### SD Card & Config Failures 
+- `ConfigLoader::load() will throw or return error codes 
+- `Logger::startNewRun() checks file open/write sucess
+- Both escalate via `ErrorMonitor` or return to `SystemCoordinator::handleError()`
+
+### Error Escalation Mechanism 
+Handled via GoF Obs Pattern (`ErrorMonitor -> SystemCoordinator`) as I mentioned earlier. 
+With the adition of the messages buffered in `RingBuffer<ErrorEvent>` and polled by FSM loop. 
+
+All escallations trigger: 
+- State change to `ERROR`
+- Loggin of failure cause 
+- Display of failure reason on OLED 
+- Reset to `IDLE` after user ack via rotary encoder button press (perhaps a timout as well) 
+
+### Error handling in `SystemCoordinator`
+```
+void SystemCoordinator::handleError(const std::string& msg) {
+    logger_->log(LogEvent::SystemError{msg});
+    ui_->setDisplayState(SystemState::ERROR, msg);
+    abortCurrentProtocol();
+    transitionTo(State::IDLE);
+}
+```
+
+### Recovery Strategy 
+| Scenario             | Action                                            |
+| -------------------- | ------------------------------------------------- |
+| USB device unplugged | Log, retry for 5s, then abort                     |
+| SD full              | Log warning, skip file writes                     |
+| SD Corrupt/Missing   | Log warning, then abort                           |
+| Protocol failure     | Abort run, return to IDLE                         |
+| Logger thread stuck  | Write error to `/tmp/failsafe.log`, reboot device |
+
+## 6. IO Abstractions 
+In this section I will define how the middleware interacts with the hardware-level interfaces: 
+- USB serial ports 
+- GPIO lines (rotary encoder + button) 
+- i2c ILED display 
+- File system (SD card) 
+
+So I am thinking to design these as modular wrapper classes to encapsulate raw Linux APIs, hide complexity, and 
+make sure the logic is clean, testable, and portable. 
+
+### USB Serial - `SerialChannel`
+#### Purspose: 
+- Abstract `/dev/ttyUSBx` device
+- Provide non-blocking read/write with line framing and optional CRC 
+- Handle reconnection, flushing, and identity tagging 
+
+#### Class Sketch 
+```
+class SerialChannel {
+public:
+    SerialChannel(const std::string& devicePath);
+    bool open();
+    void close();
+    bool isConnected() const;
+
+    void writeLine(const std::string& line);
+    std::optional<std::string> readLine();  // Non-blocking if possible
+
+private:
+    int fd_;
+    std::string path_;
+    std::string rxBuffer_;
+};
+```
+But I also want to support device VID/PID tagging and line CRC verification and `poll()` integration for async event loop
+(in `RPCManager`)
+
+### GPIO - `RotaryEncoderGPIO` 
+#### Purpose: 
+- Read rotary encoder A/B signals + button press 
+- Provide high-level events like `Direction::Left`, `Direction::Right`, `Pressed`
+
+#### Class Sketch: 
+```
+enum class Direction { None, Left, Right };
+
+class RotaryEncoderGPIO {
+public:
+    void initialize();
+    Direction poll();  // Called periodically from UI thread
+    bool isButtonPressed();
+
+private:
+    int pinA_, pinB_, pinBtn_;
+    int lastState_;
+    std::chrono::steady_clock::time_point lastDebounceTime_;
+};
+```
+Use `libgpiod` or `/sys/class/gpio` depending on system setup 
+
+### I2C OLED Display - `OLEDDisplay`
+#### Purpose: 
+- Render parameter name + value 
+- Show status screens (IDLE, RUNNING, ERROR) 
+- Optional: animation or flashing effects, maybe Cellectric Logo 
+
+#### Class Sketch: 
+```
+class OLEDDisplay {
+public:
+    void initialize();
+    void showParameter(const std::string& name, float value);
+    void showState(SystemState state, const std::string& optionalMsg = "");
+
+private:
+    int i2cFd_;
+    uint8_t i2cAddress_;
+    FrameBuffer frame_;
+    void flush();
+};
+```
+#### Internal Deets: 
+- Target SSDI1306 or SH1106 i2c controller 
+- Use existing Cpp Libs or talk to `/dev/i2c-1` directly with `ioctl()`
+- Frame buffering ensures no flickering 
+
+### File System - `FileLogger` (ussed by `Logger`)
+#### Purpose: 
+- Abstract CSV logging to SD card 
+- Handle auto-flushing and log rotation 
+
+#### Class Sketch 
+```
+class FileLogger {
+public:
+    bool startRun(const std::string& experimentId);
+    void log(const LogEvent& e);
+    void finishRun();
+    void enforceRotationLimit(size_t maxBytes);
+
+private:
+    std::ofstream file_;
+    std::string baseDir_;
+};
+```
+- `Logger` thread calls `FileLogger::log()` from the background thread
+- Uses `std::thread::steady_clock` for timestamps 
+- Manages log naming and `manifest.json` if needs be. 
+
+### Integration Points 
+| Module              | Uses This I/O Abstraction              |
+| ------------------- | -------------------------------------- |
+| `RPCManager`        | `SerialChannel` per device             |
+| `UIController`      | `RotaryEncoderGPIO`, `OLEDDisplay`     |
+| `Logger`            | `FileLogger`                           |
+| `SystemCoordinator` | indirectly calls I/O via other modules |
+
+### Why This Abstraction Layer Matters 
+
+| Benefit              | Explanation                                                       |
+| -------------------- | ----------------------------------------------------------------- |
+|  Testable            | Replace each I/O backend with mocks/stubs for unit testing        |
+|  Isolation           | Logic code doesn’t depend on Linux file APIs                      |
+|  Portability         | Easy to retarget to another board (e.g., SPI OLED instead of I2C) |
+|  Professional design | Clear layering, dependency inversion in practice                  |
+
+### RAII Reminder 
+- All these IO classes will: 
+    - `open()` resources in `initialize()` or ctor
+    - `close()` or `cleanup()` in dtor
+- This keeps all system-level handles safely wrapped :)
+
+## 7. File and Directory Layout 
+This section defnes the physical structure of the code base - where each module lives, how it is grouped and what goes 
+into the `include/` vs `src/`. 
+
+The goal is to 
+- Keep the project modular and navigable 
+- Seperate headers and impl
+- Mirror Logical domains (e.g., UI vs protocol vs middleware) 
+- Support CMake builds and cross-compilation 
+
+### Top-Level Structure 
+
+```
+/MiLO/
+├── include/
+│   ├── core/
+│   ├── io/
+│   ├── protocols/
+│   └── ui/
+├── src/
+│   ├── core/
+│   ├── io/
+│   ├── protocols/
+│   └── ui/
+├── tests/
+├── cmake/
+├── scripts/
+└── CMakeLists.txt
+```
+
+### Folder-by-Folder Breakdown 
+#### `/include/`
+- Contains all public headers 
+- Grouped by logical domain
+- Mirrors `/src/` layout 
+
+| Subfolder    | Purpose                                      |
+| ------------ | -------------------------------------------- |
+| `core/`      | Coordinator, Logger, Factory, ErrorMonitor   |
+| `io/`        | SerialChannel, OLED, GPIO, FileLogger        |
+| `protocols/` | ExperimentProtocol base + concrete protocols |
+| `ui/`        | UIController, enums, ParameterStore          |
+
+eg: 
+
+```
+/include/core/SystemCoordinator.hpp
+/include/io/SerialChannel.hpp
+/include/protocols/LysisProtocol.hpp
+/include/ui/UIController.hpp
+```
+
+#### `/src/`
+- Impl files (.cpp)
+- Mirrors header structure for clarity 
+
+eg: 
+```
+/src/core/SystemCoordinator.cpp
+/src/io/SerialChannel.cpp
+/src/protocols/LysisProtocol.cpp
+/src/ui/UIController.cpp
+```
+
+#### `/tests/`
+- Unit  and integration tests (GTest) 
+- Mocks for each IO class
+- Standalone test runners for FSMs, protocol steps, IO edge cases 
+
+`/cmake/`
+- Toolchain files (cross compile)
+- ST toolchain config (arm-linux-gnueabinf)
+- Optional: `FindXXX.cmake` files for dependencies (e.g., `nlohman_json`)
+
+#### `/scripts/` 
+- Flash scripts 
+- SD card image mount helpers 
+- Serial port mapping tools (udev utilities) 
+
+### CMake Targets 
+Suggested targets in `CMakeLists.txt`:
+```
+add_library(core STATIC
+    src/core/SystemCoordinator.cpp
+    src/core/Logger.cpp
+    ...
+)
+
+add_library(io STATIC
+    src/io/SerialChannel.cpp
+    src/io/OLEDDisplay.cpp
+    ...
+)
+
+add_executable(milo_experimentd
+    src/main.cpp
+)
+
+target_link_libraries(milo_experimentd
+    core
+    io
+    protocols
+    ui
+    pthread
+    ...
+)
+```
+
+### Best Practices Followed 
+| Practice               | Explanation                                  |
+| ---------------------- | -------------------------------------------- |
+| Header/Impl separation | Clean build system, test mocking, modularity |
+| Folder mirroring       | Jump between header/impl instantly           |
+| Logical domains        | Easy onboarding, team collaboration          |
+| CMake-ready            | CI/CD and cross-compilation support          |
 
