@@ -2,7 +2,7 @@
 
 ## System Role
 
-The Linux MPU serves as the central brain of a medical device, orchestrating three external MCU-controlled hardware modules via USB serial. 
+The Linux MPU serves as the central brain of the medical device, orchestrating three external MCU-controlled hardware modules via USB serial. 
 It executes experiment protocols, parses SD card config files, monitors rotary encoder input, updates an OLED display, and logs experiment results with low latency system architecture.
 
 ## Core Responsibilities of the Linux MPU

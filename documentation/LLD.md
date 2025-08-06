@@ -1,9 +1,9 @@
 # Low Level Design 
 
 ## Purpose 
-Low Level Desing can get murky. Here is what you stand to gain by reading this document document.
+Low Level Desing can get murky. Here is what this document does.
 
--   Map HLD modules to concrete C++ classes and responsibilities
+-   Maps HLD modules to concrete C++ classes and responsibilities
 -   Defines data structures, threading model, memory ownership
 -   Selects design patterns (Factory, FSM, Observer, Singleton, etc.)
 -   Provides inter-thread communication strategy
@@ -14,7 +14,7 @@ I’ll break the LLD down into the following sections:
 
 1. Module-to-Class Mapping
 - One section per module from the HLD
-- For each: class name, public methods, key responsibilities
+- For each: class name, public/private methods, key responsibilities
 
 2. Threading Model
 - Which modules run in which threads
@@ -28,7 +28,7 @@ I’ll break the LLD down into the following sections:
 - Factory for protocol instantiation
 - State machine for protocol lifecycle
 - SPSC queues or ring buffers for inter-thread messaging
-- Strategy or interface pattern for each protocol variant
+- Strategy pattern for each protocol variant
 - Observer for loggers 
 
 5. Error Handling & Watchdogs
@@ -49,7 +49,7 @@ I’ll break the LLD down into the following sections:
 - /include/, etc.
 
 ## 1. Module-to-Class Mapping 
-### What we’ve done in Module-to-Class Mapping is:
+### What I’ve done in Module-to-Class Mapping is:
 - Sketch a first-pass API for each module based on its HLD role
 - Define their core responsibilities and collaborators
 - Focus on clarity over optimal flexibility
@@ -245,6 +245,7 @@ So the threading model leans on dedicated threads + lock-free memory hand offs f
 - Updates OLED display based on state
 
 > **Why a seperate thread?** 
+
 > Because GPIO polling and OLED updates are **slow** (~i2c wrote latency + debounce timing). 
 > We do not want that garbage anywhere near the protocol FSM logic. This keeps input and rendering **off the hot path**. 
 
@@ -255,6 +256,7 @@ So the threading model leans on dedicated threads + lock-free memory hand offs f
 - Pushes log events to logger queue
 
 > **Why a seperate thread?** 
+
 > Protocols will have internal timing logic that may block. 
 > They will be the "brains" of the system and should not **be blocked** either. 
 > So they will block and they should not be blocked by: 
@@ -263,7 +265,7 @@ So the threading model leans on dedicated threads + lock-free memory hand offs f
 - i2C/GPIO ISR (UI updates)
 - Serial I/O (Remote Procedure Calls to distributed devices) 
 
-This thread runs the active control state machine, must feal "real-time from a logic perspective. 
+This thread runs the active control state machine, must feal "real-time" from a logic perspective. 
 
 ### Serial I/O Thread 
 - Uses `poll()` or `select()` to wait on several `/dev/ttyUSBx`
@@ -271,6 +273,7 @@ This thread runs the active control state machine, must feal "real-time from a l
 - Buffers input lines and matches protocol requests 
 
 > **Why a seperate thread** 
+
 > Because `read()` on a serial port is a blocking syscall, and IO latency is unpredictable. 
 > By isolating it, the main protocol thread can continue working independently, and just await a res. 
 
@@ -318,7 +321,7 @@ This section answers the question:
 The system is going to be multithreaded, so ownership clarity ensures: 
 - No dangling pointers
 - No data races
-- No accidental double-free -r lifetime extension bugs
+- No accidental double-free lifetime extension bugs
 - Deterministic shutdown logic 
 - Minimal surprises when reading or modifying code
 
@@ -333,7 +336,7 @@ The system is going to be multithreaded, so ownership clarity ensures:
 
 
 ### Ownership Map (Per Module)
-I am once again asking you to review the architectures modules: 
+I am once again asking you to review the architecture's modules: 
 | Module                              | Description                                                                  |
 | ----------------------------------- | ---------------------------------------------------------------------------- |
 | **SystemCoordinator**               | Manages overall system lifecycle: boot, protocol execution, shutdown.        |
@@ -370,7 +373,7 @@ std::unique_ptr<ExperimentProtocol> protocol_;
 
 #### `ConfigLoader`
 - Short lived 
-- Allocated on stack during SystemCoordinator::initialize()
+- Allocated on stack during `SystemCoordinator::initialize()`
 - Return JSOn data byvaly (copy/move) 
 
 #### `ProtocolFactory` 
@@ -385,20 +388,20 @@ std::unique_ptr<ExperimentProtocol> protocol_;
 - Holds reference to: `ParameterStore` (as a `std::shared_ptr`) 
 - Lifetime: per experiment run. 
 
-> We do not share protocl logic between runs - I rate its better to discard and rebuild fresh per config. 
+> We do not share protocol logic between runs because I rate its better to discard and rebuild fresh per config. 
 
 #### `RPCManager` 
 - Shared between: 
     - `SystemCoordinator` (duirng init)
     - `ExperimentProtocol` (for use during run) 
 - Owns: all active USB serial connections 
-- Lifetime: `SystemCoordinator::initialize() -> app shutdown 
+- Lifetime: `SystemCoordinator::initialize()` -> app shutdown 
 
 #### `Logger`
 - Owned by `SystemCoordinator`
 - Runs its own internal thread
 - Consumes `LogEvents` from a ring buffer 
-- Shuts down cleanly at system exit via Logger::finishRun()
+- Shuts down cleanly at system exit via `Logger::finishRun()`
 
 #### `UIController`
 - Owned by `SystemCoordinator`
@@ -406,13 +409,13 @@ std::unique_ptr<ExperimentProtocol> protocol_;
     - Rotary encoder GPIO lines 
     - OLED i2c handle 
     - Its own thread 
-- Writes to: `ParameterStore` (via std::shared_ptr) 
+- Writes to: `ParameterStore` (via `std::shared_ptr`) 
 
 #### `ParameterStore`
 - Shared across a few modules: 
     - `UIController` (wrt) 
     - `ExperimentProtocol` (rd) 
-    - `Logger` (rad, for logging parameters set 
+    - `Logger` (rd)
 - Critical sections and internal data guarded by mutex/RAII guards 
 
 #### `ErrorMonitor` 
@@ -446,7 +449,7 @@ over std::queue<T>. All good options. Here is my initial draft:
 
 ## 4. Design Patterns
 
-This section is lay down what patterns I plan to use while also addressing __why__ we are using each one, __what__ problem the pattern solves, and __how__ it fits into 
+This section lays down what patterns I plan to use while also addressing __why__ we are using each one, __what__ problem the pattern solves, and __how__ it fits into 
 our system"s structure and goals. 
 
 Hopefully, this section reveals: 
@@ -464,7 +467,7 @@ We need to instantiate different protocol classes at runtime based on:
 - Possibly: user selection from the UI
 
 #### Soln: Factory Pattern 
->Define an interface for creating an object, ut let subclasses (or config) decide whcih class to instantiate. 
+>Define an interface for creating an object, but let subclasses (or config) decide whcih class to instantiate. 
 
 #### Impl (something like this) 
 ```
@@ -479,7 +482,7 @@ Why runtime decision making? Why this pattern for this system.
 - Decouples config parsing from concrete class construction 
 - Easy to extend: add new protocol class and register it 
 - Allows for plugin-style architecture later 
-- Safe than `if (type == "lysis") return new LysisProtocol(); 
+- Safer than `if (type == "lysis") return new LysisProtocol(); 
 
 But honestly, if I am smart with how this factory works and how concrete classes generate experiment protocols, 
 changes to experiment protocols will have minimal impact on object code. Maybe we can bypass generating new binaries all together. 
@@ -584,8 +587,9 @@ public:
 
 Buuut the above is just a quick scaffold of the basic observer pattern. In truth the `ErrorMonitor` subject will live in 
 a different thread to the `SystemCoordinator`. This means we need to queue notifications for the right thread. 
-So instead of directly calling `observer->onNotify(...) we will do something like: `observer->postToMainThread(msg)`
+So instead of directly calling `observer->onNotify(...)` we will do something like: `observer->postToMainThread(msg)`
 where `postToMainThread()` pushes the message onto a `RingBuffer<ErrorEvent>` owned by the protocol thread. 
+
 > This introduces a message queue from `ErrorMonitor -> SystemCoordinator`, keeping the latter on its own thread. 
 
 Clean. Safe. Real-Time.
@@ -658,4 +662,20 @@ Perhaps I will introduce scoped guards (e.g., RunGuard for safe FSM exit logging
 | RAII          | Threads, Files, I2C, etc. | Resource safety, no leaks                     |
 
 
+## 5. Error Handling & Watchdogs
+
+So thi section addresses how I plan to : 
+- Detect failures in real time 
+- Recover 
+- Escalate to the right module (e.g., `SystemCoordinator`)
+- Ensure system does not hang or silently fail
+
+### Error Categories (MiLO SW specific)
+| Category            | Examples                                           | Detection Mechanism      |
+| ------------------- | -------------------------------------------------- | ------------------------ |
+| Thread-level issues | Logger thread crashes, UI thread stalls            | Watchdog, liveness check |
+| Serial failures     | USB disconnection, timeout, corrupt response       | `RPCManager`, CRC check  |
+| SD/storage issues   | SD card missing, write failure, config parse error | `Logger`, `ConfigLoader` |
+| UI failures         | Encoder stops responding, OLED I2C failure         | `UIController`           |
+| Protocol runtime    | Unexpected response, user abort, invalid state     | `ExperimentProtocol`     |
 
