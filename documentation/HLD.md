@@ -1,4 +1,4 @@
-# 1. High-Level Design (HLD) - MiLO Middleware on Linux MPU - v/1.0
+# 1. High-Level Design (HLD) - MiLO Middleware on Linux MPU 
 
 ## System Role
 

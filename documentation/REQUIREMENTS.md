@@ -1,4 +1,4 @@
-# Functional and Non-Functional Requirements — Medical Device Middleware - v/1.0
+# Functional and Non-Functional Requirements — Medical Device Middleware 
 
 ## Project Overview
 
