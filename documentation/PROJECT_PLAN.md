@@ -4,14 +4,6 @@
 
 ---
 
-## Assumptions (kept tight to your LLD/HLD)
-- **Lang/Build:** C++17+, CMake, clang-tidy/format, GTest; cross‑compile for STM32MP1; reproducible builds.  
-- **Runtime:** `experimentd` (systemd), udev stable device names, SD card layout for configs/logs.  
-- **Arch:** Threads: UI, Serial/RPC, Logger, Coordinator; ring buffers/SPSC queues; FSM-driven protocols; observer-based error monitoring.  
-- **Perf:** Target typical 3–5 ms hot‑path latency, worst‑case <10 ms; zero new allocations in hot path.
-
----
-
 ## Week 1 — Bootstrap & Scaffolding  
 **Dates:** Tue **12 Aug** → Fri **15 Aug** (4 days)
 
@@ -179,4 +171,4 @@
 
 ### Notes
 - If Week 1’s 4‑day start leaves a tiny gap, pull a light task (docs/tests) forward from Week 2.  
-- Swap in your preferred **Protocol #2** during Week 7; the slot is deliberately generic so we can pick the highest‑value one.  
+- Swap in preferred **Protocol #2** during Week 7; the slot is deliberately generic so we can pick the highest‑value one.  
