@@ -1,4 +1,4 @@
-# 8‑Week Build Plan (Markdown)  
+# 8‑Week Build Plan
 **Project start:** **Tue, 12 Aug 2025** (Europe/Vienna)  
 **Cadence:** 5 days/week (Week 1 has 4 days due to Tuesday start)
 
