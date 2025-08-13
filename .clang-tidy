@@ -1,0 +1,13 @@
+Checks: >
+  clang-analyzer-*,
+  cppcoreguidelines-*,
+  modernize-*,
+  performance-*,
+  readability-*
+WarningsAsErrors: ''
+HeaderFilterRegex: '^(src|include)/'
+CheckOptions:
+  - key:             readability-identifier-naming.NamespaceCase
+    value:           CamelCase
+  - key:             modernize-use-trailing-return-type.IgnoreMacros
+    value:           '1'
