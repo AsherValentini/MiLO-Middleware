@@ -1,0 +1,46 @@
+{ 
+	"version": 5,
+	"cmakeMinimumRequired": {"major": 3, "minor": 24, "patch": 0 },
+	"configurePresets": [
+		{
+			"name": "host-debug",
+			"displayName": "Host Debug",
+			"generator": "Ninja",
+			"binaryDir": "build/host-debug",
+			"cacheVariables": { 
+				"CMAKE_BUILD_TYPE": "Debug",
+				"MILO_ENABLE_ASAN": true,
+				"MILO_ENABLE_UBSAN": true,
+				"MILO_ENABLE_TSAN": false
+			}
+		},
+		{
+			"name": "host-release",
+			"displayName": "Host Release",
+			"generator": "Ninja",
+			"binaryDir": "build/host-release",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Release",
+				"MILO_ENABLE_LTO": false
+			}
+		},
+		{
+			"name": "arm-release",
+			"displayName": "ARM Cross (configure only)",
+			"generator": "Ninja",
+			"binaryDir": "build/arm-release",
+			"toolchainFile": "cmake/toolchain-stm32mp1.cmake",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Release"
+			}
+		}
+	],
+	"buildPresets": [
+		{"name": "host-debug", "configurePreset": "host-debug" },
+		{"name": "host-release", "configurePreset": "host-release" },
+		{"name": "arm-release", "configurePreset": "arm-release" }
+	],
+	"testPresets": [
+		{ "name": "host-debug", "configurePreset": "host-debug" }
+	]
+}

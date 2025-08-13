@@ -1,0 +1,35 @@
+cmake_minimum_required(VERSION 3.24)
+project(milo-runtime VERSION 0.1.0 LANGUAGES CXX)
+
+# Global compile settings 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+option(MILO_ENABLE_ASAN "Enable AdressSanitizer in Debug" OFF)
+option(MILO_ENABLE_UBSAN "Enable UBSanitizer in Debug" OFF)
+option(MILO_ENABLE_TSAN "Enable ThreadSanitizer in Debug" OFF)
+option(MILO_ENABLE_LTO  "Enable Link-Time Optimization" OFF)
+
+if(MSVC)
+  add_compile_options(/W4 /WX)
+else()
+  add_compile_options(-Wall -Wextra -Wpedantic -Wconversion -Werror -fno-omit-frame-pointer)
+  if(CMAKE_BUILD_TYPE MATCHES "Release" AND MILO_ENABLE_LTO)
+    include(CheckIPOSupported)
+    check_ipo_supported(RESULT ipo_supported OUTPUT ipo_msg)
+    if(ipo_supported)
+      set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
+    endif()
+  endif()
+endif()
+
+# Library stubs (empty for now)
+add_library(milo_core  INTERFACE)
+add_library(milo_io    INTERFACE)
+add_library(milo_proto INTERFACE)
+add_library(milo_ui    INTERFACE)
+
+# Main daemon target
+add_executable(milo-experimentd src/main.cpp)
+target_link_libraries(milo-experimentd PRIVATE milo_core milo_io milo_proto)
