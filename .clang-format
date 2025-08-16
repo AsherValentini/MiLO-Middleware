@@ -1,12 +1,15 @@
-# Based on LLVM with a few embedded-C++ tweaks
-BasedOnStyle:        LLVM
-IndentWidth:         2            # short indent for small screens
-ColumnLimit:         100
-UseTab:              Never
-BraceWrapping:
-  AfterFunction:     true
-  AfterNamespace:    true
-AlignConsecutiveDeclarations: true
+BasedOnStyle: LLVM      # start from stock LLVM
+
+IndentWidth: 2          # 2-space indent
+ColumnLimit: 100
+
+NamespaceIndentation: All   # indent code inside namespaces
+ReflowComments: false       # keeps banner comments as-is (new key)
+
+BreakBeforeBraces: Attach   # { on the same line for classes/functions
+
+# --- optional helpers (all supported in v18) ---
 AllowShortLambdasOnASingleLine: All
+AlignConsecutiveDeclarations: true
 Cpp11BracedListStyle: false
-IncludeBlocks:       Preserve
+IncludeBlocks: Preserve
