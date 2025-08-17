@@ -21,7 +21,8 @@
 			"binaryDir": "build/host-release",
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "Release",
-				"MILO_ENABLE_LTO": false
+				"MILO_ENABLE_LTO": false,
+				"MILO_SKIP_TESTS": true
 			}
 		},
 		{
@@ -31,7 +32,8 @@
 			"binaryDir": "build/arm-release",
 			"toolchainFile": "cmake/toolchain-stm32mp1.cmake",
 			"cacheVariables": {
-				"CMAKE_BUILD_TYPE": "Release"
+				"CMAKE_BUILD_TYPE": "Release",
+				"MILO_SKIP_TESTS": true
 			}
 		}
 	],

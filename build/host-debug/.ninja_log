@@ -1,3 +1,17 @@
 # ninja log v5
-1	433	1755428949851194291	CMakeFiles/milo-experimentd.dir/src/main.cpp.o	fb844eb54c635c0
-434	494	1755428949911194830	milo-experimentd	6c714b364b60771f
+1	863	1755437339307218540	CMakeFiles/milo-experimentd.dir/src/main.cpp.o	fb844eb54c635c0
+867	1012	1755437339456219907	milo-experimentd	6c714b364b60771f
+2	2767	1755437341212236024	CMakeFiles/milo_tests.dir/tests/rpc_test.cpp.o	6011740d6fd52bdd
+1	2783	1755437341229236180	CMakeFiles/milo_tests.dir/tests/core_test.cpp.o	c60e57337fb5ff3
+5	2794	1755437341242236299	_deps/googletest-build/googletest/CMakeFiles/gtest_main.dir/src/gtest_main.cc.o	4889dd967a03c595
+2	2806	1755437341253236400	CMakeFiles/milo_tests.dir/tests/param_test.cpp.o	4afac2996b3488ca
+2	2987	1755437341433238052	CMakeFiles/milo_tests.dir/tests/logger_test.cpp.o	8ddecc7da7e2b139
+1	2989	1755437341436238080	CMakeFiles/milo_tests.dir/tests/ui_test.cpp.o	9b3fb0e5987f0925
+2	3218	1755437341666240191	_deps/googletest-build/googlemock/CMakeFiles/gmock_main.dir/src/gmock_main.cc.o	d06f1a58ab72fd61
+2	4232	1755437342677249470	_deps/googletest-build/googlemock/CMakeFiles/gmock.dir/src/gmock-all.cc.o	cfa589eb8ef571b9
+3	7133	1755437345573276048	_deps/googletest-build/googletest/CMakeFiles/gtest.dir/src/gtest-all.cc.o	f6907352cb665b21
+7133	7227	1755437345672276957	lib/libgtest.a	e21429778cf18d0f
+7227	7269	1755437345715277352	lib/libgtest_main.a	30ececf4ed42069a
+7227	7283	1755437345728277471	lib/libgmock.a	aed9b9110c6e7301
+7283	7323	1755437345770277857	lib/libgmock_main.a	685aef476c43eaae
+7269	7409	1755437345855278636	milo_tests	b04e1c7d0e4344c3

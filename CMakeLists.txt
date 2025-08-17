@@ -11,6 +11,24 @@ option(MILO_ENABLE_UBSAN "Enable UBSanitizer in Debug" OFF)
 option(MILO_ENABLE_TSAN "Enable ThreadSanitizer in Debug" OFF)
 option(MILO_ENABLE_LTO  "Enable Link-Time Optimization" OFF)
 
+# -----------------------------------------------------------------------------
+# GoogleTest (host builds only)
+# -----------------------------------------------------------------------------
+include(FetchContent)
+FetchContent_Declare(
+    googletest
+    URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
+)
+
+# Option to skip tests (used by cross-compile preset)
+option(MILO_SKIP_TESTS "Disable GoogleTest + test target" OFF)
+
+if(NOT MILO_SKIP_TESTS)
+	FetchContent_MakeAvailable(googletest)
+	enable_testing()
+endif()
+
+
 if(MSVC)
   add_compile_options(/W4 /WX)
 else()
@@ -39,3 +57,28 @@ target_include_directories(milo_ui INTERFACE include/ui)
 # Main daemon target
 add_executable(milo-experimentd src/main.cpp)
 target_link_libraries(milo-experimentd PRIVATE milo_core milo_io milo_protocols)
+
+
+# -----------------------------------------------------------------------------
+# Unit-test target
+# -----------------------------------------------------------------------------
+if(NOT MILO_SKIP_TESTS)
+	add_executable(milo_tests
+		tests/core_test.cpp
+		tests/ui_test.cpp
+		tests/rpc_test.cpp
+		tests/param_test.cpp
+		tests/logger_test.cpp
+	)
+	target_link_libraries(milo_tests
+		PRIVATE
+			gtest_main
+			milo_core
+			milo_ui
+			milo_protocols
+	)
+
+	add_test(NAME all COMMAND milo_tests)
+endif()
+
+

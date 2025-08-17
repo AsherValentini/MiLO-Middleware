@@ -1,3 +1,10 @@
+
+if(NOT DEFINED ENV{SDKTARGETSYSROOT})
+  message(FATAL_ERROR
+    "SDKTARGETSYSROOT not set. Source the STM32MP1 SDK environment script first.") # source /opt/st/SDK/environment-setup-cortexa7hf-neon-vfpv4-ostl-linux-gnueabi
+endif()
+
+
 # cmake/toolchain-stm32mp1.cmake
 # Minimal cross toolchain skeleton (will adjust TOOLCHAIN_PREFIX to our SDK later)
 set(CMAKE_SYSTEM_NAME Linux)
