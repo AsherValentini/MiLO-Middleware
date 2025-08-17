@@ -52,6 +52,7 @@ build cmake_object_order_depends_target_milo-experimentd: phony || CMakeFiles/mi
 build CMakeFiles/milo-experimentd.dir/src/main.cpp.o: CXX_COMPILER__milo-experimentd_unscanned_Debug /home/asher/cellectric/milo/src/main.cpp || cmake_object_order_depends_target_milo-experimentd
   DEP_FILE = CMakeFiles/milo-experimentd.dir/src/main.cpp.o.d
   FLAGS = -g -std=c++20 -Wall -Wextra -Wpedantic -Wconversion -Werror -fno-omit-frame-pointer
+  INCLUDES = -I/home/asher/cellectric/milo/include/core -I/home/asher/cellectric/milo/include/protocols
   OBJECT_DIR = CMakeFiles/milo-experimentd.dir
   OBJECT_FILE_DIR = CMakeFiles/milo-experimentd.dir/src
   TARGET_COMPILE_PDB = CMakeFiles/milo-experimentd.dir/

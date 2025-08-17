@@ -24,12 +24,18 @@ else()
   endif()
 endif()
 
-# Library stubs (empty for now)
+# Library stubs (io empty for now)
 add_library(milo_core  INTERFACE)
+target_include_directories(milo_core INTERFACE include/core)
+
 add_library(milo_io    INTERFACE)
-add_library(milo_proto INTERFACE)
+
+add_library(milo_protocols INTERFACE)
+target_include_directories(milo_protocols INTERFACE include/protocols)
+
 add_library(milo_ui    INTERFACE)
+target_include_directories(milo_ui INTERFACE include/ui)
 
 # Main daemon target
 add_executable(milo-experimentd src/main.cpp)
-target_link_libraries(milo-experimentd PRIVATE milo_core milo_io milo_proto)
+target_link_libraries(milo-experimentd PRIVATE milo_core milo_io milo_protocols)
