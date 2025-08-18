@@ -31,7 +31,7 @@ It executes experiment protocols, parses SD card config files, monitors rotary e
 | MCU 2 (PG)                  | USB-Serial                 | Bi-Directional | Pulse triggering                                          |
 | MCU 3 (Pump)                | USB-Serial                 | Bi-Directional | Syringe control                                           |
 | Rotary Encoder + Switch     | GPIO                       | Input          | Menu navigation, parameter adjustment, Start/Stop trigger |
-| OLED Display                | I2C                        | Output         | Show system state and user-selected parameters            |
+| OLED Display                | SPI                        | Output         | Show system state and user-selected parameters            |
 | SD Card                     | SDIO/MMC                   | Read/Write     | Load config and save experiment logs                      |
 
 
@@ -92,7 +92,7 @@ It executes experiment protocols, parses SD card config files, monitors rotary e
 |------------------|--------------------------------------------------------------------------------|
 | SD Card          | Standard Linux mount (`/mnt/sdcard`)                                           |
 | USB Serial       | `/dev/ttyUSBx`, managed via VID/PID udev-mapped symlinks (`/dev/pump1`, etc.)  |
-| OLED Display     | `/dev/i2c-1` using I2C user-space API (e.g., `ioctl` + write)                  |
+| OLED Display     | `/dev/spidev0.0` using SPI                                                     |
 | Rotary Encoder   | GPIO lines using `libgpiod` edge detection and polling                         |
 
 ## Internal (between modules) 

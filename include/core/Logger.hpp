@@ -24,14 +24,14 @@ namespace milo {
 
       // --- public API ---
       void startNewRun();              ///< open file + launch worker thread
-      void log(const LogEvent &event); ///< enqueue event (non-blocking)
+      void log(const LogEvent& event); ///< enqueue event (non-blocking)
       void finishRun();                ///< flush + join worker thread
 
     private:
-      std::ofstream                         csvFile_;
+      std::ofstream csvFile_;
       std::unique_ptr<RingBuffer<LogEvent>> buffer_;
-      std::thread                           worker_;
-      std::atomic<bool>                     running_{ false };
+      std::thread worker_;
+      std::atomic<bool> running_{ false };
     };
 
   } // namespace core

@@ -10,6 +10,8 @@ BreakBeforeBraces: Attach   # { on the same line for classes/functions
 
 # --- optional helpers (all supported in v18) ---
 AllowShortLambdasOnASingleLine: All
-AlignConsecutiveDeclarations: true
+AlignConsecutiveDeclarations: false
 Cpp11BracedListStyle: false
 IncludeBlocks: Preserve
+
+PointerAlignment: Left

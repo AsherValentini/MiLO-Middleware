@@ -42,22 +42,34 @@ else()
   endif()
 endif()
 
-# Library stubs (io empty for now)
-add_library(milo_core  INTERFACE)
-target_include_directories(milo_core INTERFACE include/core)
 
-add_library(milo_io    INTERFACE)
+add_library(milo_core  INTERFACE)
+target_include_directories(milo_core INTERFACE include)
 
 add_library(milo_protocols INTERFACE)
-target_include_directories(milo_protocols INTERFACE include/protocols)
+target_include_directories(milo_protocols INTERFACE include)
 
 add_library(milo_ui    INTERFACE)
-target_include_directories(milo_ui INTERFACE include/ui)
+target_include_directories(milo_ui INTERFACE include)
 
-# Main daemon target
+# -----------------------------------------------------------------------------
+# I/O layer (stub impls for now)
+# -----------------------------------------------------------------------------
+add_library(milo_io STATIC
+    src/io/SerialChannel.cpp
+    src/io/GPIOInput.cpp
+    src/io/ButtonGPIO.cpp
+    src/io/RotaryEncoderGPIO.cpp
+    src/io/FileLogger.cpp
+    src/io/OLEDDisplay.cpp
+)
+target_include_directories(milo_io PUBLIC include)
+
+# -----------------------------------------------------------------------------
+# Main Deamon Target
+# -----------------------------------------------------------------------------
 add_executable(milo-experimentd src/main.cpp)
 target_link_libraries(milo-experimentd PRIVATE milo_core milo_io milo_protocols)
-
 
 # -----------------------------------------------------------------------------
 # Unit-test target
@@ -76,6 +88,7 @@ if(NOT MILO_SKIP_TESTS)
 			milo_core
 			milo_ui
 			milo_protocols
+			milo_io
 	)
 
 	add_test(NAME all COMMAND milo_tests)

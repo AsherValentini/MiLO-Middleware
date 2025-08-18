@@ -39,7 +39,7 @@ I’ll break the LLD down into the following sections:
 **I/O Abstractions**
 - Serial port wrapper class (non-blocking)
 - GPIO input class (rotary encoder + debounce)
-- I2C OLED display class (text rendering, menu updates)
+- SPI OLED display class (text rendering, menu updates)
 
 **File & Directory Layout**
 - /src/middleware/
@@ -176,7 +176,7 @@ private:
 };
 ```
 ### 3.8 UIController 
-Role: Emits events to the `SystemCoordinator` or the `ParameterStore`. Talks to the OLED via i2c-dev. 
+Role: Emits events to the `SystemCoordinator` or the `ParameterStore`. Talks to the OLED via SPI-dev. 
 ```
 class UIController {
 public:
@@ -188,7 +188,7 @@ public:
 
 private:
     void handleEncoderInput();   // Read GPIO
-    void updateOLED();          // Write to I2C
+    void updateOLED();          // Write to SPI
 };
 ```
 ### 3.9 ParameterStore
@@ -246,7 +246,7 @@ So the threading model leans on dedicated threads + lock-free memory hand offs f
 
 > **Why a seperate thread?** 
 
-> Because GPIO polling and OLED updates are **slow** (~i2c wrote latency + debounce timing). 
+> Because GPIO polling and OLED updates are **slow** (~SPI wrote latency + debounce timing). 
 > We do not want that garbage anywhere near the protocol FSM logic. This keeps input and rendering **off the hot path**. 
 
 ### 4.4 Protocol Execution Thread
@@ -262,7 +262,7 @@ So the threading model leans on dedicated threads + lock-free memory hand offs f
 > So they will block and they should not be blocked by: 
 
 - SD card access (logging) 
-- i2C/GPIO ISR (UI updates)
+- SPI/GPIO ISR (UI updates)
 - Serial I/O (Remote Procedure Calls to distributed devices) 
 
 This thread runs the active control state machine, must feal "real-time" from a logic perspective. 
@@ -302,7 +302,7 @@ This thread runs the active control state machine, must feal "real-time" from a 
 
 | Thread            | Purpose                     | Blocking Ops?  | Communication                                                  |
 | ----------------- | --------------------------- | -------------- | -------------------------------------------------------------- |
-| `UI Thread`       | Reads GPIO, updates display | Yes (I2C)      | Writes to `ParameterStore`                                     |
+| `UI Thread`       | Reads GPIO, updates display | Yes (SPI)      | Writes to `ParameterStore`                                     |
 | `Protocol Thread` | Runs FSM, manages commands  | No             | Reads from `ParameterStore`, sends to Serial, pushes to logger |
 | `Serial Thread`   | Reads/writes `/dev/ttyUSBx` | Yes            | Notifies protocol FSM via future/promise or callback           |
 | `Logger Thread`   | Flushes log entries to disk | Yes (disk I/O) | Pulls from lock-free buffer                                    |
@@ -407,7 +407,7 @@ std::unique_ptr<ExperimentProtocol> protocol_;
 - Owned by `SystemCoordinator`
 - Owns: 
     - Rotary encoder GPIO lines 
-    - OLED i2c handle 
+    - OLED SPI handle 
     - Its own thread 
 - Writes to: `ParameterStore` (via `std::shared_ptr`) 
 
@@ -646,7 +646,7 @@ The entire protocol system is a Strategy, chosen at runtime via Factory.
 Use RAII (in destructors) to clean up (terrible acronym-great practice):
 -   SerialChannel connections
 -   Threads (std::thread::join())
--   i2c file handles
+-   SPI file handles
 -   Log file handles
 
 Perhaps I will introduce scoped guards (e.g., RunGuard for safe FSM exit logging). Lets see, how much I can do before the deadline. 
@@ -659,7 +659,7 @@ Perhaps I will introduce scoped guards (e.g., RunGuard for safe FSM exit logging
 | Observer      | `ErrorMonitor`            | Loose coupling for error propagation          |
 | SPSC Queue    | `Logger`, `Protocol`      | Lock-free async event streaming               |
 | Strategy      | `ExperimentProtocol`      | Swappable protocols under a uniform interface |
-| RAII          | Threads, Files, I2C, etc. | Resource safety, no leaks                     |
+| RAII          | Threads, Files, SPI, etc. | Resource safety, no leaks                     |
 
 
 ## 7. Error Handling & Watchdogs
@@ -676,7 +676,7 @@ So this section addresses how I plan to:
 | Thread-level issues | Logger thread crashes, UI thread stalls            | Watchdog, liveness check |
 | Serial failures     | USB disconnection, timeout, corrupt response       | `RPCManager`, CRC check  |
 | SD/storage issues   | SD card missing, write failure, config parse error | `Logger`, `ConfigLoader` |
-| UI failures         | Encoder stops responding, OLED I2C failure         | `UIController`           |
+| UI failures         | Encoder stops responding, OLED SPI failure         | `UIController`           |
 | Protocol runtime    | Unexpected response, user abort, invalid state     | `ExperimentProtocol`     |
 
 ### 7.2 Guiding Philosophy 
@@ -750,7 +750,7 @@ void SystemCoordinator::handleError(const std::string& msg) {
 In this section I will define how the middleware interacts with the hardware-level interfaces: 
 - USB serial ports 
 - GPIO lines (rotary encoder + button) 
-- i2c ILED display 
+- SPI ILED display 
 - File system (SD card) 
 
 So I am thinking to design these as modular wrapper classes to encapsulate raw Linux APIs, hide complexity, and 
@@ -806,7 +806,7 @@ private:
 ```
 Use `libgpiod` or `/sys/class/gpio` depending on system setup 
 
-### 8.3 I2C OLED Display - `OLEDDisplay`
+### 8.3 SPI OLED Display - `OLEDDisplay`
 #### Purpose: 
 - Render parameter name + value 
 - Show status screens (IDLE, RUNNING, ERROR) 
@@ -821,15 +821,14 @@ public:
     void showState(SystemState state, const std::string& optionalMsg = "");
 
 private:
-    int i2cFd_;
-    uint8_t i2cAddress_;
+    int Fd_;
+    uint8_t Address_;
     FrameBuffer frame_;
     void flush();
 };
 ```
-#### 8.3.2 Internal Deets: 
-- Target SSDI1306 or SH1106 i2c controller 
-- Use existing Cpp Libs or talk to `/dev/i2c-1` directly with `ioctl()`
+#### 8.3.2 Internal Deets:  
+- Use existing Cpp Libs or talk to `/dev/spidev0.0` directly 
 - Frame buffering ensures no flickering 
 
 ### 8.4 File System - `FileLogger` (ussed by `Logger`)

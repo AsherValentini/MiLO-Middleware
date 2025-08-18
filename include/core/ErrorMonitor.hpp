@@ -25,17 +25,17 @@ namespace milo::core {
     ~ErrorMonitor() = default;
 
     /// Register a lambda that escalates a fatal fault to SystemCoordinator.
-    void registerEscalation(std::function<void(const std::string &)> cb);
+    void registerEscalation(std::function<void(const std::string&)> cb);
 
     /// Called by subsystems on fault; will forward to the escalation callback.
-    void notifyFailure(const std::string &message);
+    void notifyFailure(const std::string& message);
 
   private:
-    void forwardIfNew(const std::string &message);
+    void forwardIfNew(const std::string& message);
 
-    std::function<void(const std::string &)> escalation_{};
-    std::vector<std::string>                 seen_; ///< de-dupe list
-    mutable std::mutex                       mtx_;
+    std::function<void(const std::string&)> escalation_{};
+    std::vector<std::string> seen_; ///< de-dupe list
+    mutable std::mutex mtx_;
   };
 
 } // namespace milo::core
