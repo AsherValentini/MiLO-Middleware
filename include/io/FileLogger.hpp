@@ -23,6 +23,7 @@ namespace milo {
       FileLogger() = default;
       ~FileLogger(); ///< flush + fclose
 
+      //---public API------------------------------------------------------
       /** @returns false if path cannot be opened writable. */
       bool open(const std::string& path);
 
@@ -34,7 +35,7 @@ namespace milo {
 
       void close();
 
-      /* non-copyable, move-enabled */
+      //---non-copyable, move-enabled---------------------------------------
       FileLogger(const FileLogger&) = delete;
       FileLogger& operator=(const FileLogger&) = delete;
       FileLogger(FileLogger&&) = default;

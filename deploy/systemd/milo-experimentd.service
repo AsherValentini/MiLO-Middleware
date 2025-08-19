@@ -1,0 +1,13 @@
+[Unit]
+Description=Milo Experiment Daemon
+After=multi-user.target
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/milo-experimentd --hello
+Restart=on-failure
+User=root
+
+[Install]
+WantedBy=multi-user.target

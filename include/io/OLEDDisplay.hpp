@@ -24,6 +24,7 @@ namespace milo {
       OLEDDisplay() = default;
       ~OLEDDisplay(); ///< auto-closes fd
 
+      //---public API---------------------------------------------------------
       bool init(const std::string& devPath = "/dev/spidev0.0",
                 uint8_t dcPin = 24); // data/command GPIO for 4-wire SPI
 
