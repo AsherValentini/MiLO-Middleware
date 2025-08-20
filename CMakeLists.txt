@@ -81,6 +81,7 @@ if(NOT MILO_SKIP_TESTS)
 		tests/rpc_test.cpp
 		tests/param_test.cpp
 		tests/logger_test.cpp
+		tests/io_test.cpp
 	)
 	target_link_libraries(milo_tests
 		PRIVATE

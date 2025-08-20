@@ -9,6 +9,9 @@
 #include <optional>
 #include <string>
 
+// Linux header
+#include <termios.h> // for speed_t types e.g., B115200
+
 namespace milo {
   namespace io {
 
@@ -28,7 +31,7 @@ namespace milo {
       ~SerialChannel(); // close the /dev/tty fs at destruction
 
       //---public API-------------------------------------------
-      bool open(const std::string& dev, int baud);
+      bool open(const std::string& dev, speed_t baud);
       bool writeLine(const std::string& line); // returns false on EIO
       std::optional<std::string> readLine(std::chrono::milliseconds timeout);
       void close();
@@ -42,7 +45,8 @@ namespace milo {
       SerialChannel& operator=(SerialChannel&&) = default;
 
     private:
-      int fd_{ -1 }; ///< POSIX fs (-1==closed)
+      int fd_{ -1 };            ///< POSIX fs (-1==closed)
+      std::string rx_buffer_{}; ///< buffer to store readLine content
     };
   } // namespace io
 } // namespace milo
