@@ -38,6 +38,31 @@
 
 **Exit criteria:** Host sim proves serial read/write; mocks pass; log files rotate on size/date in tests.
 
+**Daily Breakdown** 
+
+| Day        | Focus                       | What we’re doing                                                                                                                                             | Why it matters                       |
+| ---------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------ |
+| **Mon 18** | **SerialChannel MVP**       | • Flesh out `SerialChannel.cpp` with POSIX termios init, non-blocking `readLine()` / `writeLine()`<br>• Stub CRC hook (`bool verifyCRC(const std::string&)`) | Foundation for all USB comms         |
+|            | **Serial fakes & tests**    | • Use pseudo-tty (`openpty`) to simulate FTDI pair<br>• Tests: happy path, timeout, disconnect                                                               | Locks API, proves non-blocking logic |
+| **Tue 19** | **RPCManager skeleton**     | • Implement `connect()`, `send()`, `awaitResponse()` with retry/back-off<br>• Inject `SerialChannel` via ctor                                                | Starts orchestration layer           |
+|            | Tests                       | • Fake SerialChannel (gmock) to assert retries/back-off timing                                                                                               | Catches logic errors early           |
+|            | **RotaryEncoderGPIO**       | • Edge-capture + 20 ms debounce<br>• `poll()` returns `Direction` + `pressed()`                                                                              | Gives UI real input                  |
+|            | Encoder fakes & tests       | • Feed synthetic A/B waveform, expect correct direction events                                                                                               | Verifies debounce window             |
+|            | Commit                      | Tag `day6-rotary-mvp`                                                                                                                                        |                                      |
+| **Wed 20** | **FileLogger v1**           | • Buffered CSV writer, periodic flush, log-dir param                                                                                                         | Enables log subsystem                |
+|            | File rotation logic         | • When dir > config size, delete oldest                                                                                                                      | Meets NFR                            |
+|            | Tests (SD missing/full)     | • Use temp dir; mock disk-full via ftruncate                                                                                                                 | Reliability                          |
+|            | **OLEDDisplay API**         | • Minimal pages: `showState()`, `showParameter()`<br>• Create I²C stub (same API signature)                                                                  | UI output side ready                 |
+| **Thu 21** | OLED mock & tests           | • Bitmap frame mock; assert text rendered                                                                                                                    | Keeps headless tests green           |
+|            | **Integrate UI thread**     | • `UIController` now drives encoder + OLED mocks                                                                                                             | Pipes data end-to-end                |
+|            | **RPCManager ⇄ Serial E2E** | • Host sim: two pty pairs, send command, echo response                                                                                                       | Validates message flow timing        |
+|            | Commit                      | Tag `day8-io-integration`                                                                                                                                    |                                      |
+| **Fri 22** | **Hard-path latency audit** | • `chrono` timestamps in tests; assert <10 ms in host sim                                                                                                    | Early perf guard                     |
+|            | **CI upgrade**              | • Add `arm-release` cross build + test to GitHub Actions (cache SDK)                                                                                         | Catch regressions automatically      |
+|            | **Docs & Doxygen pass**     | • Brief class-level comments on each IO impl                                                                                                                 | Keeps the code self-documenting      |
+|            | Exit-criteria demo          | • Run host sim “idle loop”: encoder event → RPCManager send → FileLogger entry<br>• Show log rotation trigger                                                | Proves “Week 2 done”                 |
+|            | Wrap-up & tag               | Tag `week2-io-complete`, update `PROJECT_PLAN.md` checklist, write `DAY_7-9.md` roll-up                                                                      | Clean hand-off to Week 3             |
+
 ---
 
 ## Week 3 — Concurrency Backbone & State Shell  
