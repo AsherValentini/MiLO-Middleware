@@ -783,12 +783,89 @@ private:
 But I also want to support device VID/PID tagging and line CRC verification and `poll()` integration for async event loop
 (in `RPCManager`)
 
-### 8.2 GPIO - `RotaryEncoderGPIO` 
-#### 8.2.1 Purpose: 
-- Read rotary encoder A/B signals + button press 
+### 8.2 GPIO - 'GPIOInput` - `GPIOButton` (derived) - `RotaryEncoderGPIO` (composite) 
+So just a brief intro to whats going on here. In our system decomp we got a rotary encoder that also acts as a tactile switch. 
+Then we got a standalone button. My proposil is to create an GPIOInput base class. Then, we got a button IO module that
+will inherit from that. Instead of making the rotary encoder an 'is a' lets make it a 'has a', where its channels are GPIOInputs. 
+
+#### 8.2.1 Purpose:
+- Read GPIO input ~ button press  
+- Read rotary encoder A/B signals
 - Provide high-level events like `Direction::Left`, `Direction::Right`, `Pressed`
 
-#### 8.2.2 Class Sketch: 
+#### 8.2.2 Classes Sketch: 
+GPIOInput: 
+```
+    class GPIOInput {
+    public:
+      enum class Edge { Rising, Falling };
+
+      using Callback = std::function<void(Edge)>;
+
+      GPIOInput() = default;
+      virtual ~GPIOInput(); ///< auto-release line
+
+      /** @returns false if the GPIO chip/line cannot be opened. */
+      bool open(const std::string& chip, ///< e.g. "/dev/gpiochip0"
+                unsigned int line,       ///< pin number
+                bool activeLow = false);
+
+      /** Polls the line and emits debounced edge events.  To be called from the
+      owner’s loop (UI thread or epoll mux). */
+      virtual void poll(std::chrono::milliseconds now) = 0;
+
+      void registerCallback(Callback cb) { cb_ = std::move(cb); }
+
+      void close();
+
+    protected:
+      /** Derived classes call this when they detect a debounced edge. */
+      void emit(Edge e) {
+        if (cb_)
+          cb_(e);
+      }
+
+      int fd_{ -1 }; ///< gpiod line FD (-1 = closed)
+      Callback cb_{};
+
+      // simple debounce helpers
+      bool lastState_{ false };
+      uint32_t lastTick_{ 0 }; ///< msec timestamp of last change
+    };
+```
+GPIOButton (derived): 
+```
+    class ButtonGPIO : public GPIOInput {
+
+    public:
+      enum class Event { ShortPress, LongPress };
+
+      using Callback = std::function<void(Event)>;
+
+      explicit ButtonGPIO(std::chrono::milliseconds longPressThresh = std::chrono::seconds{ 1 })
+          : longThreshold_{ longPressThresh } {}
+
+      void registerCallback(Callback cb) { cbButton_ = std::move(cb); }
+
+      /** Called by owner loop (e.g., UI thread) every ~10 ms. */
+      void poll(std::chrono::milliseconds now) override;
+
+    private:
+      void emitPress(Event e) {
+        if (cbButton_) {
+          if (cbButton_)
+            cbButton_(e);
+        }
+      }
+
+      Callback cbButton_{};
+
+      std::chrono::milliseconds longThreshold_{ 1000 };
+      bool presed_{ false };
+      std::uint32_t pressTick_{ 0 };
+    };
+```
+RotaryEncoderGPIO (composite) 
 ```
 enum class Direction { None, Left, Right };
 
@@ -799,7 +876,7 @@ public:
     bool isButtonPressed();
 
 private:
-    int pinA_, pinB_, pinBtn_;
+    GPIOInput pinA_, pinB_, pinBtn_; ///<something like this-right where we make the channels GPIO as well
     int lastState_;
     std::chrono::steady_clock::time_point lastDebounceTime_;
 };
