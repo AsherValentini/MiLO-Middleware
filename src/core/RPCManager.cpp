@@ -34,7 +34,29 @@ void RPCManager::connect() {
     }
     channels_.emplace(dev, std::move(ch));
   }
-  //TODO: Logging hook
+  //TODO: Logger hook
   connected_ = true;
+}
+
+void RPCManager::sendCommand(Device dev, const protocols::Command& cmd) {
+
+  if (!connected_)
+    throw std::runtime_error("[RPCManager] RPCmanager not connected");
+
+  auto it = channels_.find(dev);
+  if (it == channels_.end())
+    throw std::invalid_argument("[RPCManager] send failed: unknown serial device");
+  auto cmdStr = cmd.toWire();
+
+  assert(cmdStr.size() <= 256 && "[RPCManager] command exceeds 256 byte threashold");
+
+  if (!it->second.writeLine(cmdStr)) {
+    std::string errMsg =
+        "[RPCManager] failed to write to serial device: " + std::string(toString(it->first));
+    errorMonitor_->notifyFailure(errMsg);
+    throw std::runtime_error(errMsg);
+  }
+
+  //TODO: (Week 3) - recored an "in-flight" entry (device->timestamp) so that awaitResponse() can enforce round trip timeouts for now we skip this ashy
 }
 
