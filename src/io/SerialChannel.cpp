@@ -1,5 +1,5 @@
 /* @file SerialChannel.cpp
- * @brief stub impl
+ * @brief IO abstraction layer that wraps ttyUSBx - handles file descriptor, framing, line io and RAII - POSIX compliant
  *
  * © 2025 Milo Medical — MIT-licensed.
  */

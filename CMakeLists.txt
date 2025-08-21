@@ -42,9 +42,14 @@ else()
   endif()
 endif()
 
-
-add_library(milo_core  INTERFACE)
-target_include_directories(milo_core INTERFACE include)
+# -----------------------------------------------------------------------------
+# Orchestration layer
+# -----------------------------------------------------------------------------
+add_library(milo_core  STATIC
+	src/core/RPCManager.cpp
+	#TAG: add remaining impls as and when they come
+)
+target_include_directories(milo_core PUBLIC include)
 
 add_library(milo_protocols INTERFACE)
 target_include_directories(milo_protocols INTERFACE include)
@@ -53,7 +58,7 @@ add_library(milo_ui    INTERFACE)
 target_include_directories(milo_ui INTERFACE include)
 
 # -----------------------------------------------------------------------------
-# I/O layer (stub impls for now)
+# I/O layer
 # -----------------------------------------------------------------------------
 add_library(milo_io STATIC
     src/io/SerialChannel.cpp
