@@ -27,8 +27,8 @@ void RPCManager::connect() {
   channels_.clear();
 
   for (auto& [dev, path] : symlinks_) {
-    io::SerialChannel ch;
-    if (!ch.open(path, kDefaultBaud)) {
+    auto ch = std::make_unique<io::SerialChannel>();
+    if (!ch->open(path, kDefaultBaud)) {
       std::string errMsg =
           std::string("[RPCManager] serial device: ") + toString(dev) + " open failed";
       errorMonitor_->notifyFailure(errMsg);
@@ -52,7 +52,7 @@ void RPCManager::sendCommand(Device dev, const protocols::Command& cmd) {
 
   assert(cmdStr.size() <= 256 && "[RPCManager] command exceeds 256 byte threashold");
 
-  if (!it->second.writeLine(cmdStr)) {
+  if (!it->second->writeLine(cmdStr)) {
     std::string errMsg =
         "[RPCManager] failed to write to serial device: " + std::string(toString(it->first));
     errorMonitor_->notifyFailure(errMsg);
@@ -71,7 +71,7 @@ milo::protocols::Response RPCManager::awaitResponse(Device dev, std::chrono::mil
   if (it == channels_.end())
     throw std::invalid_argument("[RPCManager] incorrect device input");
 
-  auto line = it->second.readLine(timeout);
+  auto line = it->second->readLine(timeout);
   if (!line.has_value()) {
     std::string errMsg =
         "[RPCManager] failed to read line from serial device: " + std::string(toString(it->first));

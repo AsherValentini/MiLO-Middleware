@@ -34,6 +34,8 @@ namespace milo {
         return next_read_line;
       }
 
+      const std::string& getLastWritten() const { return last_written; }
+
     private:
       std::string last_written;
     };

@@ -47,6 +47,7 @@ endif()
 # -----------------------------------------------------------------------------
 add_library(milo_core  STATIC
 	src/core/RPCManager.cpp
+	src/core/ErrorMonitor.cpp
 	#TAG: add remaining impls as and when they come
 )
 target_include_directories(milo_core PUBLIC include)

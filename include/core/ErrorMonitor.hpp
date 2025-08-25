@@ -22,8 +22,8 @@ namespace milo::core {
  */
   class ErrorMonitor {
   public:
-    ErrorMonitor() = default;
-    ~ErrorMonitor() = default;
+    ErrorMonitor();
+    virtual ~ErrorMonitor();
 
     /// Register a lambda that escalates a fatal fault to SystemCoordinator.
     void registerEscalation(std::function<void(const std::string&)> cb);

@@ -13,11 +13,18 @@
 #include <unordered_map>
 #include <utility>
 
-//MiLO headers
+// MILO headers
 #include "core/ErrorMonitor.hpp" // RPCManager will be a client to the error monitor
 #include "io/SerialChannel.hpp" // RPCManager will own SerialChannels and requires full type knowledge
 #include "protocols/Command.hpp"  // TODO: impl for the command header stub
 #include "protocols/Response.hpp" // TODO: impl for the resonse header stub
+
+// Forward declarations
+namespace milo {
+  namespace test {
+    class RPCManagerTest;
+  }
+} // namespace milo
 
 namespace milo {
   namespace core {
@@ -50,11 +57,13 @@ namespace milo {
     private:
       static constexpr speed_t kDefaultBaud = B115200;
       std::shared_ptr<ErrorMonitor> errorMonitor_;
-      std::unordered_map<Device, io::SerialChannel> channels_;
+      std::unordered_map<Device, std::unique_ptr<io::SerialChannel>> channels_;
       static constexpr std::array<std::pair<Device, const char*>, 3> symlinks_{
         { { Device::PSU, "/dev/psu1" }, { Device::PG, "/dev/pg1" }, { Device::Pump, "/dev/pump1" } }
       };
       bool connected_{ false };
+
+      friend class milo::test::RPCManagerTest;
     };
 
   } // namespace core

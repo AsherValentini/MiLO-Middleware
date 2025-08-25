@@ -58,6 +58,15 @@ build CMakeFiles/milo_core.dir/src/core/RPCManager.cpp.o: CXX_COMPILER__milo_cor
   TARGET_COMPILE_PDB = CMakeFiles/milo_core.dir/milo_core.pdb
   TARGET_PDB = libmilo_core.pdb
 
+build CMakeFiles/milo_core.dir/src/core/ErrorMonitor.cpp.o: CXX_COMPILER__milo_core_unscanned_Debug /home/asher/cellectric/milo/src/core/ErrorMonitor.cpp || cmake_object_order_depends_target_milo_core
+  DEP_FILE = CMakeFiles/milo_core.dir/src/core/ErrorMonitor.cpp.o.d
+  FLAGS = -g -std=c++20 -Wall -Wextra -Wpedantic -Wconversion -Werror -fno-omit-frame-pointer
+  INCLUDES = -I/home/asher/cellectric/milo/include
+  OBJECT_DIR = CMakeFiles/milo_core.dir
+  OBJECT_FILE_DIR = CMakeFiles/milo_core.dir/src/core
+  TARGET_COMPILE_PDB = CMakeFiles/milo_core.dir/milo_core.pdb
+  TARGET_PDB = libmilo_core.pdb
+
 
 # =============================================================================
 # Link build statements for STATIC_LIBRARY target milo_core
@@ -66,7 +75,7 @@ build CMakeFiles/milo_core.dir/src/core/RPCManager.cpp.o: CXX_COMPILER__milo_cor
 #############################################
 # Link the static library libmilo_core.a
 
-build libmilo_core.a: CXX_STATIC_LIBRARY_LINKER__milo_core_Debug CMakeFiles/milo_core.dir/src/core/RPCManager.cpp.o
+build libmilo_core.a: CXX_STATIC_LIBRARY_LINKER__milo_core_Debug CMakeFiles/milo_core.dir/src/core/RPCManager.cpp.o CMakeFiles/milo_core.dir/src/core/ErrorMonitor.cpp.o
   LANGUAGE_COMPILE_FLAGS = -g
   OBJECT_DIR = CMakeFiles/milo_core.dir
   POST_BUILD = :
