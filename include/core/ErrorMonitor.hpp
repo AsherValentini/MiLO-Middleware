@@ -29,7 +29,7 @@ namespace milo::core {
     void registerEscalation(std::function<void(const std::string&)> cb);
 
     /// Called by subsystems on fault; will forward to the escalation callback.
-    void notifyFailure(const std::string& message);
+    virtual void notifyFailure(const std::string& message);
 
   private:
     void forwardIfNew(const std::string& message);

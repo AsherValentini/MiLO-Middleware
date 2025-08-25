@@ -28,12 +28,12 @@ namespace milo {
     public:
       //---ctr / dtr--------------------------------------------
       SerialChannel() = default;
-      ~SerialChannel(); // close the /dev/tty fs at destruction
+      virtual ~SerialChannel(); // close the /dev/tty fs at destruction
 
       //---public API-------------------------------------------
-      bool open(const std::string& dev, speed_t baud);
-      bool writeLine(const std::string& line); // returns false on EIO
-      std::optional<std::string> readLine(std::chrono::milliseconds timeout);
+      virtual bool open(const std::string& dev, speed_t baud);
+      virtual bool writeLine(const std::string& line); // returns false on EIO
+      virtual std::optional<std::string> readLine(std::chrono::milliseconds timeout);
       void close();
 
       //---non-copyable-----------------------------------------

@@ -71,6 +71,14 @@ add_library(milo_io STATIC
 target_include_directories(milo_io PUBLIC include)
 
 # -----------------------------------------------------------------------------
+# Testing layer
+# -----------------------------------------------------------------------------
+add_library(milo_fakes INTERFACE)
+target_include_directories(milo_fakes
+	INTERFACE
+		${PROJECT_SOURCE_DIR}/tests/fakes
+)
+# -----------------------------------------------------------------------------
 # Main Deamon Target
 # -----------------------------------------------------------------------------
 add_executable(milo-experimentd src/main.cpp)
@@ -91,10 +99,12 @@ if(NOT MILO_SKIP_TESTS)
 	target_link_libraries(milo_tests
 		PRIVATE
 			gtest_main
+			gmock
 			milo_core
 			milo_ui
 			milo_protocols
 			milo_io
+			milo_fakes
 	)
 
 	add_test(NAME all COMMAND milo_tests)

@@ -198,12 +198,12 @@ build milo-experimentd: CXX_EXECUTABLE_LINKER__milo-experimentd_Debug CMakeFiles
 #############################################
 # Order-only phony target for milo_tests
 
-build cmake_object_order_depends_target_milo_tests: phony || cmake_object_order_depends_target_gtest cmake_object_order_depends_target_gtest_main cmake_object_order_depends_target_milo_core cmake_object_order_depends_target_milo_io
+build cmake_object_order_depends_target_milo_tests: phony || cmake_object_order_depends_target_gmock cmake_object_order_depends_target_gtest cmake_object_order_depends_target_gtest_main cmake_object_order_depends_target_milo_core cmake_object_order_depends_target_milo_io
 
 build CMakeFiles/milo_tests.dir/tests/core_test.cpp.o: CXX_COMPILER__milo_tests_unscanned_Debug /home/asher/cellectric/milo/tests/core_test.cpp || cmake_object_order_depends_target_milo_tests
   DEP_FILE = CMakeFiles/milo_tests.dir/tests/core_test.cpp.o.d
   FLAGS = -g -std=c++20 -Wall -Wextra -Wpedantic -Wconversion -Werror -fno-omit-frame-pointer
-  INCLUDES = -I/home/asher/cellectric/milo/include -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googletest/include -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googletest
+  INCLUDES = -I/home/asher/cellectric/milo/include -I/home/asher/cellectric/milo/tests/fakes -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googletest/include -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googletest -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googlemock/include -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googlemock
   OBJECT_DIR = CMakeFiles/milo_tests.dir
   OBJECT_FILE_DIR = CMakeFiles/milo_tests.dir/tests
   TARGET_COMPILE_PDB = CMakeFiles/milo_tests.dir/
@@ -212,7 +212,7 @@ build CMakeFiles/milo_tests.dir/tests/core_test.cpp.o: CXX_COMPILER__milo_tests_
 build CMakeFiles/milo_tests.dir/tests/ui_test.cpp.o: CXX_COMPILER__milo_tests_unscanned_Debug /home/asher/cellectric/milo/tests/ui_test.cpp || cmake_object_order_depends_target_milo_tests
   DEP_FILE = CMakeFiles/milo_tests.dir/tests/ui_test.cpp.o.d
   FLAGS = -g -std=c++20 -Wall -Wextra -Wpedantic -Wconversion -Werror -fno-omit-frame-pointer
-  INCLUDES = -I/home/asher/cellectric/milo/include -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googletest/include -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googletest
+  INCLUDES = -I/home/asher/cellectric/milo/include -I/home/asher/cellectric/milo/tests/fakes -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googletest/include -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googletest -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googlemock/include -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googlemock
   OBJECT_DIR = CMakeFiles/milo_tests.dir
   OBJECT_FILE_DIR = CMakeFiles/milo_tests.dir/tests
   TARGET_COMPILE_PDB = CMakeFiles/milo_tests.dir/
@@ -221,7 +221,7 @@ build CMakeFiles/milo_tests.dir/tests/ui_test.cpp.o: CXX_COMPILER__milo_tests_un
 build CMakeFiles/milo_tests.dir/tests/rpc_test.cpp.o: CXX_COMPILER__milo_tests_unscanned_Debug /home/asher/cellectric/milo/tests/rpc_test.cpp || cmake_object_order_depends_target_milo_tests
   DEP_FILE = CMakeFiles/milo_tests.dir/tests/rpc_test.cpp.o.d
   FLAGS = -g -std=c++20 -Wall -Wextra -Wpedantic -Wconversion -Werror -fno-omit-frame-pointer
-  INCLUDES = -I/home/asher/cellectric/milo/include -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googletest/include -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googletest
+  INCLUDES = -I/home/asher/cellectric/milo/include -I/home/asher/cellectric/milo/tests/fakes -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googletest/include -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googletest -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googlemock/include -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googlemock
   OBJECT_DIR = CMakeFiles/milo_tests.dir
   OBJECT_FILE_DIR = CMakeFiles/milo_tests.dir/tests
   TARGET_COMPILE_PDB = CMakeFiles/milo_tests.dir/
@@ -230,7 +230,7 @@ build CMakeFiles/milo_tests.dir/tests/rpc_test.cpp.o: CXX_COMPILER__milo_tests_u
 build CMakeFiles/milo_tests.dir/tests/param_test.cpp.o: CXX_COMPILER__milo_tests_unscanned_Debug /home/asher/cellectric/milo/tests/param_test.cpp || cmake_object_order_depends_target_milo_tests
   DEP_FILE = CMakeFiles/milo_tests.dir/tests/param_test.cpp.o.d
   FLAGS = -g -std=c++20 -Wall -Wextra -Wpedantic -Wconversion -Werror -fno-omit-frame-pointer
-  INCLUDES = -I/home/asher/cellectric/milo/include -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googletest/include -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googletest
+  INCLUDES = -I/home/asher/cellectric/milo/include -I/home/asher/cellectric/milo/tests/fakes -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googletest/include -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googletest -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googlemock/include -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googlemock
   OBJECT_DIR = CMakeFiles/milo_tests.dir
   OBJECT_FILE_DIR = CMakeFiles/milo_tests.dir/tests
   TARGET_COMPILE_PDB = CMakeFiles/milo_tests.dir/
@@ -239,7 +239,7 @@ build CMakeFiles/milo_tests.dir/tests/param_test.cpp.o: CXX_COMPILER__milo_tests
 build CMakeFiles/milo_tests.dir/tests/logger_test.cpp.o: CXX_COMPILER__milo_tests_unscanned_Debug /home/asher/cellectric/milo/tests/logger_test.cpp || cmake_object_order_depends_target_milo_tests
   DEP_FILE = CMakeFiles/milo_tests.dir/tests/logger_test.cpp.o.d
   FLAGS = -g -std=c++20 -Wall -Wextra -Wpedantic -Wconversion -Werror -fno-omit-frame-pointer
-  INCLUDES = -I/home/asher/cellectric/milo/include -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googletest/include -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googletest
+  INCLUDES = -I/home/asher/cellectric/milo/include -I/home/asher/cellectric/milo/tests/fakes -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googletest/include -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googletest -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googlemock/include -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googlemock
   OBJECT_DIR = CMakeFiles/milo_tests.dir
   OBJECT_FILE_DIR = CMakeFiles/milo_tests.dir/tests
   TARGET_COMPILE_PDB = CMakeFiles/milo_tests.dir/
@@ -248,7 +248,7 @@ build CMakeFiles/milo_tests.dir/tests/logger_test.cpp.o: CXX_COMPILER__milo_test
 build CMakeFiles/milo_tests.dir/tests/io_test.cpp.o: CXX_COMPILER__milo_tests_unscanned_Debug /home/asher/cellectric/milo/tests/io_test.cpp || cmake_object_order_depends_target_milo_tests
   DEP_FILE = CMakeFiles/milo_tests.dir/tests/io_test.cpp.o.d
   FLAGS = -g -std=c++20 -Wall -Wextra -Wpedantic -Wconversion -Werror -fno-omit-frame-pointer
-  INCLUDES = -I/home/asher/cellectric/milo/include -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googletest/include -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googletest
+  INCLUDES = -I/home/asher/cellectric/milo/include -I/home/asher/cellectric/milo/tests/fakes -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googletest/include -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googletest -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googlemock/include -isystem /home/asher/cellectric/milo/build/host-debug/_deps/googletest-src/googlemock
   OBJECT_DIR = CMakeFiles/milo_tests.dir
   OBJECT_FILE_DIR = CMakeFiles/milo_tests.dir/tests
   TARGET_COMPILE_PDB = CMakeFiles/milo_tests.dir/
@@ -262,9 +262,9 @@ build CMakeFiles/milo_tests.dir/tests/io_test.cpp.o: CXX_COMPILER__milo_tests_un
 #############################################
 # Link the executable milo_tests
 
-build milo_tests: CXX_EXECUTABLE_LINKER__milo_tests_Debug CMakeFiles/milo_tests.dir/tests/core_test.cpp.o CMakeFiles/milo_tests.dir/tests/ui_test.cpp.o CMakeFiles/milo_tests.dir/tests/rpc_test.cpp.o CMakeFiles/milo_tests.dir/tests/param_test.cpp.o CMakeFiles/milo_tests.dir/tests/logger_test.cpp.o CMakeFiles/milo_tests.dir/tests/io_test.cpp.o | lib/libgtest_main.a libmilo_core.a libmilo_io.a lib/libgtest.a || lib/libgtest.a lib/libgtest_main.a libmilo_core.a libmilo_io.a
+build milo_tests: CXX_EXECUTABLE_LINKER__milo_tests_Debug CMakeFiles/milo_tests.dir/tests/core_test.cpp.o CMakeFiles/milo_tests.dir/tests/ui_test.cpp.o CMakeFiles/milo_tests.dir/tests/rpc_test.cpp.o CMakeFiles/milo_tests.dir/tests/param_test.cpp.o CMakeFiles/milo_tests.dir/tests/logger_test.cpp.o CMakeFiles/milo_tests.dir/tests/io_test.cpp.o | lib/libgtest_main.a lib/libgmock.a libmilo_core.a libmilo_io.a lib/libgtest.a || lib/libgmock.a lib/libgtest.a lib/libgtest_main.a libmilo_core.a libmilo_io.a
   FLAGS = -g
-  LINK_LIBRARIES = lib/libgtest_main.a  libmilo_core.a  libmilo_io.a  lib/libgtest.a
+  LINK_LIBRARIES = lib/libgtest_main.a  lib/libgmock.a  libmilo_core.a  libmilo_io.a  lib/libgtest.a
   OBJECT_DIR = CMakeFiles/milo_tests.dir
   POST_BUILD = :
   PRE_LINK = :
