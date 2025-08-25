@@ -10,6 +10,8 @@
 
 // MiLO headers
 #include "core/RPCManager.hpp"
+#include "io/SerialChannel.hpp"
+#include "protocols/Response.hpp"
 
 using namespace milo::core;
 
@@ -58,5 +60,32 @@ void RPCManager::sendCommand(Device dev, const protocols::Command& cmd) {
   }
 
   //TODO: (Week 3) - recored an "in-flight" entry (device->timestamp) so that awaitResponse() can enforce round trip timeouts for now we skip this ashy
+}
+
+milo::protocols::Response RPCManager::awaitResponse(Device dev, std::chrono::milliseconds timeout) {
+
+  if (!connected_)
+    throw std::logic_error("[RPCManager] not connected");
+
+  auto it = channels_.find(dev);
+  if (it == channels_.end())
+    throw std::invalid_argument("[RPCManager] incorrect device input");
+
+  auto line = it->second.readLine(timeout);
+  if (!line.has_value()) {
+    std::string errMsg =
+        "[RPCManager] failed to read line from serial device: " + std::string(toString(it->first));
+    errorMonitor_->notifyFailure(errMsg);
+    throw std::runtime_error(errMsg);
+  }
+
+  auto parsedResponse = milo::protocols::Response::fromWire(*line);
+
+  if (!parsedResponse.has_value()) {
+    errorMonitor_->notifyFailure("[RPCManager] response parsing failed");
+    throw std::runtime_error("[RPCManager] response parse failed");
+  }
+
+  return *parsedResponse;
 }
 

@@ -16,11 +16,12 @@
 //MiLO headers
 #include "core/ErrorMonitor.hpp" // RPCManager will be a client to the error monitor
 #include "io/SerialChannel.hpp" // RPCManager will own SerialChannels and requires full type knowledge
-#include "protocols/Command.hpp" // TODO: impl for the header stub
+#include "protocols/Command.hpp"  // TODO: impl for the command header stub
+#include "protocols/Response.hpp" // TODO: impl for the resonse header stub
+
 namespace milo {
   namespace core {
 
-    struct Response;
     enum class Device : std::uint8_t { PG, PSU, Pump, Count };
     static_assert(static_cast<std::uint8_t>(Device::Count) == 3,
                   "Device count changed please update code that depends on it");
@@ -36,6 +37,7 @@ namespace milo {
         return "Unknown";
       }
     }
+
     class RPCManager {
     public:
       explicit RPCManager(std::shared_ptr<ErrorMonitor> errMonitor);
@@ -43,7 +45,7 @@ namespace milo {
       //---public APIs------------------------------------------------------
       void connect(); ///<- opens all SerialChannel objects
       void sendCommand(Device dev, const protocols::Command& cmd);
-      Response awaitResponse(Device dev, std::chrono::milliseconds timeout);
+      protocols::Response awaitResponse(Device dev, std::chrono::milliseconds timeout);
 
     private:
       static constexpr speed_t kDefaultBaud = B115200;
